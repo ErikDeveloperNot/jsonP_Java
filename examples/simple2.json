@@ -1,0 +1,20 @@
+{
+	"key1" : "value1",
+	"obj1" : {
+		"obj_k1": "obj_v1",
+		"obj_k2": "obj_v2",
+		"obj_k3": {
+			"obj_inner_k1": "obj_inner_v1",
+			"null_k1" : null,
+			"obj_inner_k2": "obj_inner_v2"
+		} 
+	},
+	"key2" : "value2",
+	"key3" : [ "arry_v1", "arry_v2", "arry_v3", ["abc", "def", "ghi"], { "k1" : "v1", "k2" : "v2" } ],
+	"bkey1" : true,
+	"bkey2" : false,
+	"nk1" : "new Val",
+	"nk3" : [ "seems to break with array at end" ],
+	"nk2" : { "aa" : "bb", "cc" : "dd" }
+	
+}
