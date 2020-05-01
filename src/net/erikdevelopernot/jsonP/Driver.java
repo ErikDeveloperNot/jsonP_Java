@@ -35,26 +35,31 @@ public class Driver {
 		//uncomment to test Gson
 //		testGson("/Users/user1/Downloads/large.json");
 		
-		byte[] jsonData = Files.readAllBytes(Paths.get("/Users/user1/eclipse-workspace/jsonP_java/examples/simple3.json"));
+//		byte[] jsonData = Files.readAllBytes(Paths.get("/Users/user1/eclipse-workspace/jsonP_java/examples/simple5.json"));
 //		byte[] jsonData = Files.readAllBytes(Paths.get("/Users/user1/Downloads/large.json"));
+		byte[] jsonData = Files.readAllBytes(Paths.get("/Users/user1/udemy/CPP/UdemyCPP/jsonP_dyn_drvr/samples/med.json.orig"));
 		
 		//uncomment to test Jackson
 //		testJackson(jsonData);
 		
 		long s = System.currentTimeMillis();
-		
-		JsonP_Parser parser = new JsonP_Parser(jsonData, Common.CONVERT_NUMERICS);
+
+		JsonP_Parser parser = new JsonP_Parser(jsonData); //, Common.CONVERT_NUMERICS);
 		JsonPJson jsonPJson = parser.parse();
-		
+////jsonPJson.crap();		
 		long f = System.currentTimeMillis();
-//		byte[] j = jsonPJson.stringify(0);
-//		System.out.println("\n\n" + new String(j) + "\n");
+		
+		byte[] j = jsonPJson.stringify(0, true);
+		
+		long f2 = System.currentTimeMillis();
+		System.out.println("\n\n" + new String(j) + "\n");
 
 		System.out.println("Parse Time: " + (f-s) + "m/s");
 		System.out.println("Parse Stats:");
 		System.out.println("  stack: " + parser.getParseStats().stackIncreases);
 		System.out.println("  data: " + parser.getParseStats().dataIncreases);
-		System.console().readLine();
+		System.out.println("Stringify time: " + (f2-f) + "m/s");
+//		System.console().readLine();
 	}
 	
 	

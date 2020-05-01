@@ -63,28 +63,11 @@ public class JsonP_Parser {
 		if (preserveJson) {
 			// preserve json data and stack are separate structures
 			dataSz = json.length / 2;
-//			data = new byte[dataSz];
-//			stackBufSz = 1000;
-//			stackBuf = new byte[stackBufSz];
-//			dataIdx = 0;
-//			stackBufIdx = 0;
 		} else {
 			// data and stack share structure
-			/*
-			 * note unlike with c++ version where pointers can be used for indexes with java would need to use
-			 * wrapper which is too slow, so instead will use if-else to check if stack and data are the same.
-			 */
 			dataSz = json.length / 4;
-//			data = new byte[dataSz];
-//			stackBufSz = dataSz;
-//			stackBuf = data;
-//			dataIdx = 0;
-//			stackBufIdx = dataIdx;
 		}
 	
-		/*
-		 * !!!! For Java even if not preserve json better to separate the structures
-		 */
 		data = new byte[dataSz];
 		stackBufSz = 1000;
 		stackBuf = new byte[stackBufSz];
@@ -116,101 +99,47 @@ public class JsonP_Parser {
 			throw new JsonP_ParseException("Invalid Json file, too short");
 		
 		eatWhiteSpace();
-		
+
+		stackBufIdx++;
+		stackBuf[stackBufIdx++] = (byte)(0xff & (0 >>> 24));
+		stackBuf[stackBufIdx++] = (byte)(0xff & (0 >>> 16));
+		stackBuf[stackBufIdx++] = (byte)(0xff & (0 >>> 8));
+		stackBuf[stackBufIdx++] = (byte)(0xff & 0);
+
+		data[dataIdx+4] = '\0';
+		dataIdx = 5;
+
+		int dRoot = 0; // = parseObject();
+
 		if (json[jsonIdx] == '{') {
-//			*(element_type*)&stack_buf[0] = object;
-//			set_element_type(stack_buf, 0, object);
 			stackBuf[stackBufIdx++] = Common.object;
-
-			
-//			*(unsigned int*)&stack_buf[obj_member_key_offx] = 0;
-//			set_key_offx_value(stack_buf, 0, 0);
-			stackBuf[stackBufIdx++] = (byte)(0xff & (0 >>> 24));
-			stackBuf[stackBufIdx++] = (byte)(0xff & (0 >>> 16));
-			stackBuf[stackBufIdx++] = (byte)(0xff & (0 >>> 8));
-			stackBuf[stackBufIdx++] = (byte)(0xff & 0);
-			
-//			stack_i += obj_member_sz;
-//			stackBufIdx += Common.member_sz;  // <-- no reason stackbufIndx should already be pointing to 5
-			
-//			data[data_i+4] = '\0';
-//			data_i = 5;
-			data[dataIdx+4] = '\0';
-			dataIdx = 5;
-
-			int dRoot = parseObject();
-
-//for (int q=0; q<dataSz; q++) {
-//	System.out.println(q + " - " + data[q]);
-//
-//	if (data[q] < 0)
-//		System.out.println(data[q] & 0x000000FF);
-//}
-			
-			int length = jsonLen;
-			
-			if (preserveJson)
-				length = dataIdx;
-			
-			if (shrinkBuffers) {
-//				std::cout << "shrinking data from: " << data_sz << ", to: " << data_i << std::endl;
-//				data = (byte*)realloc(data, data_i);
-				
-				byte[] temp = data;
-				data = new byte[dataIdx];
-				
-				for (int i=0; i<dataIdx; i++)
-					data[i] = temp[i];
-				
-//				if (!preserveJson)
-//					length = dataIdx;
-			}
-
-			if (!preserveJson)
-//				jsonPjson = new jsonP_json{json, data, length, data_i, i, options};//i+5};
-				jsonPJson = new JsonPJson(json, data, length, dataIdx, dRoot, options);
-			else
-//				jsonPjson = new jsonP_json{data, data, length, data_i, i, options};//i+5};
-				jsonPJson = new JsonPJson(data, length, dRoot, options);
-				
-//			std::cout << "stack_i = " << stack_i << "\ndata_i = " << data_i << ", i = " << i << std::endl;
-//			std::cout << "root type: " << *((element_type*)&stack_buf[0]) << ", key: " << (unsigned int)data[*(unsigned int*)&stack_buf[1]] << std::endl;
-//			std::cout << "root2 type: " << *(element_type*)&data[i] << ", Key: " << *(unsigned int*)&data[i+1] << std::endl;
-//			std::cout << "length: " << length << std::endl;
-
-	//test_parse_object(i+5);
-
-//		} else if (json[index] == '[') {
-//			stack_i += arry_member_sz;
-////			*(unsigned int*)&stack_buf[arry_member_val_offx] = 0;
-//			set_key_offx_value(stack_buf, 0, 0);
-////			*(element_type*)&stack_buf[0] = array;
-//			set_element_type(stack_buf, 0, array);
-//			data[data_i+4] = '\0';
-//			data_i = 5;
-//
-//			unsigned int i = parse_array();
-//		
-//			if (shrink_buffers) {
-////				std::cout << "shrinking data from: " << data_sz << ", to: " << data_i << std::endl;
-//				data = (byte*)realloc(data, data_i);
-//				
-//				if (!use_json)
-//					length = data_i;
-//			}
-//
-//			if (use_json)
-//				jsonPjson = new jsonP_json{json, data, length, data_i, i, options};//i+5};
-//			else
-//				jsonPjson = new jsonP_json{data, data, length, data_i, i, options};//i+5};
-//			
-//	//test_parse_array(i+5);
-//
+			dRoot = parseObject();
+		} else if (json[jsonIdx] == '[') {
+			stackBuf[stackBufIdx++] = Common.array;
+			dRoot = parseArray();
 		} else {
 			throw new JsonP_ParseException("Error parsing json text, does not appear to be an object or an array");
 		}
-		
-		
+
+		int length = jsonLen;
+
+		if (preserveJson)
+			length = dataIdx;
+
+		if (shrinkBuffers) {
+			byte[] temp = data;
+			data = new byte[dataIdx];
+
+			for (int i=0; i<dataIdx; i++)
+				data[i] = temp[i];
+		}
+
+		if (!preserveJson)
+			jsonPJson = new JsonPJson(json, data, length, dataIdx, dRoot, options);
+		else
+			jsonPJson = new JsonPJson(data, length, dRoot, options);
+
+
 		return jsonPJson;
 	}
 	
@@ -267,12 +196,7 @@ public class JsonP_Parser {
 				while (start < jsonIdx)
 					json[valueStart++] = json[start++];
 			} else {
-//				if (increase_data_buffer(index - start + 5)) {
 				if ((jsonIdx - start + 5 + dataIdx) > dataSz) {
-					//						std::cout << "increasing the data buffer" << std::endl;
-//					data_sz = (unsigned int)data_sz * 1.2 + index - start;
-//					data = (byte*) realloc(data, data_sz);
-//					stats.data_increases++;
 					increaseDataBuffer((int) (dataSz * 1.2 + jsonIdx - start));
 				}
 
@@ -282,11 +206,7 @@ public class JsonP_Parser {
 				data[dataIdx-1] = '\0';
 			}
 		} else if (preserveJson) {
-//			if (increase_data_buffer(index - start + 5)) {
 			if ((jsonIdx - start + 5 + dataIdx) > dataSz) {
-//				data_sz = (unsigned int)data_sz * 1.2 + index - start;
-//				data = (byte*) realloc(data, data_sz);
-//				stats.data_increases++;
 				increaseDataBuffer((int) (dataSz * 1.2 + jsonIdx - start));
 			}
 
@@ -332,10 +252,8 @@ public class JsonP_Parser {
 			}
 			
 			sign = false;
-//			c = json[++index];
 			c = json[++jsonIdx];
 		}
-		
 
 		if (!preserveJson) {
 			while (s < jsonIdx-1) {
@@ -347,7 +265,6 @@ public class JsonP_Parser {
 		} else {
 			if (jsonIdx+1 - s >= dataSz - dataIdx) {
 				dataSz = (int)(dataSz * 1.2 + jsonIdx - s);
-//				data = (byte*) realloc(data, dataSz);
 				byte temp[] = data;
 				data = new byte[dataSz];
 				
@@ -436,7 +353,6 @@ public class JsonP_Parser {
 		
 		if (Common.LONG_DOUBLE_SZ + 2 >= dataSz - dataIdx) {
 			dataSz = (int)(dataSz * 1.2 + Common.LONG_DOUBLE_SZ);
-//			data = (byte*) realloc(data, data_sz);
 			byte temp[] = data;
 			data = new byte[dataSz];
 			
@@ -448,9 +364,6 @@ public class JsonP_Parser {
 		
 		if (isLong) {
 			if (d <= Long.MAX_VALUE) { 
-//				*(long*)&data[data_i] = (long)(d * mult);
-//				data_i += sizeof(long);
-//				return numeric_long;
 				long num = (long)(d * mult);
 				data[dataIdx++] = (byte)(0xFF & (num >>> 56));
 				data[dataIdx++] = (byte)(0xFF & (num >>> 48));
@@ -462,10 +375,6 @@ public class JsonP_Parser {
 				data[dataIdx++] = (byte)(0xFF & num);
 				return Common.numeric_long;
 			} else {
-//				*(double*)&data[data_i] = d * mult;
-//				data_i += sizeof(double);
-//				return numeric_double;
-//				double num = (d * mult);
 				long num = Double.doubleToRawLongBits(d * mult);
 				
 				data[dataIdx++] = (byte)(0xFF & ((long)num >>> 56));
@@ -479,10 +388,6 @@ public class JsonP_Parser {
 				return Common.numeric_double;
 			}
 		} else {
-//			*(double*)&data[data_i] = d * mult;
-//			data_i += sizeof(double);
-//			return numeric_double;
-//			double num = (d * mult);
 			long num = Double.doubleToRawLongBits(d * mult);
 			
 			data[dataIdx++] = (byte)(0xFF & ((long)num >>> 56));
@@ -533,28 +438,22 @@ public class JsonP_Parser {
 				throw new JsonP_ParseException("Invalid bool value found at index: " + jsonIdx);
 			}
 		} else if ((json[jsonIdx] >= '0' && json[jsonIdx] <= '9') || json[jsonIdx] == '-' || json[jsonIdx] == '+') {
-////			std::string number;
 			int s = jsonIdx;
 			
-////			switch (parse_numeric())//start, end)) 
 			switch ((convertNumerics) ? parseNumericCVT() : parseNumeric())
 			{
 				case Common.numeric_int :
 				{
-////					*((element_type*)&stack_buf[stack_i]) = numeric_int;
-//					set_element_type(stack_buf, stack_i, numeric_int);
 					stackBuf[stackBufIdx] = Common.numeric_int;
 					break;
 				}
 				case Common.numeric_long :
 				{
-//					set_element_type(stack_buf, stack_i, numeric_long);
 					stackBuf[stackBufIdx] = Common.numeric_long;
 					break;
 				}
 				case Common.numeric_double :
 				{
-//					set_element_type(stack_buf, stack_i, numeric_double);
 					stackBuf[stackBufIdx] = Common.numeric_double;
 					break;
 				}
@@ -585,18 +484,13 @@ public class JsonP_Parser {
 		int numKeys = 0;
 		int toReturn = -1;
 		
-		//	*((element_type*)&stack_buf[loc_stack_i]) = object;
-//		set_element_type(stack_buf, loc_stack_i, object);
 		stackBuf[locStackIndx] = Common.object;
 		
-		//	*(unsigned int*)&stack_buf[loc_stack_i + obj_member_key_offx] = *(unsigned int*)&stack_buf[loc_stack_i - obj_member_sz + obj_member_key_offx];
-//		set_key_offx_value(stack_buf, loc_stack_i, get_key_location(stack_buf, loc_stack_i - obj_member_sz));
 		stackBuf[locStackIndx+1] = stackBuf[locStackIndx - Common.member_sz + Common.member_keyvalue_offx];
 		stackBuf[locStackIndx+2] = stackBuf[locStackIndx - Common.member_sz + Common.member_keyvalue_offx + 1];
 		stackBuf[locStackIndx+3] = stackBuf[locStackIndx - Common.member_sz + Common.member_keyvalue_offx + 2];
 		stackBuf[locStackIndx+4] = stackBuf[locStackIndx - Common.member_sz + Common.member_keyvalue_offx + 3];
 		
-//		stack_i += (obj_root_sz + obj_member_sz);
 		stackBufIdx += Common.root_sz + Common.member_sz;
 	
 		boolean keepGoing = true;
@@ -619,47 +513,35 @@ public class JsonP_Parser {
 				//check for end object
 				if (json[jsonIdx] == '}') {
 					jsonIdx++;
-	//				*((unsigned int*)&stack_buf[loc_stack_i + obj_member_sz]) = num_keys;
-//					set_uint_a_indx(stack_buf, loc_stack_i + obj_member_sz, num_keys);
 					stackBuf[locStackIndx + Common.member_sz] = (byte)(0xff & (numKeys >>> 24));
 					stackBuf[locStackIndx + Common.member_sz + 1] = (byte)(0xff & (numKeys >>> 16));
 					stackBuf[locStackIndx + Common.member_sz + 2] = (byte)(0xff & (numKeys >>> 8));
 					stackBuf[locStackIndx + Common.member_sz + 3] = (byte)(0xff & numKeys);
 					
-//**** TODO ****
 					if (!dontSortKeys) {
-//						sort_keys(&stack_buf[loc_stack_i+obj_member_sz+obj_root_sz], 
-//							&stack_buf[loc_stack_i+obj_member_sz+obj_root_sz+(obj_member_sz*num_keys)],
-//							data, ((use_json) ? json : data));
+						Common.sortKeys(locStackIndx+Common.member_sz+Common.root_sz, 
+								locStackIndx+Common.member_sz+Common.root_sz+((numKeys-1)*Common.member_sz), 
+								(preserveJson) ? data : json, data, stackBuf);
 					}
 		
-//					*((element_type*)&stack_buf[loc_stack_i+obj_member_sz+obj_root_sz+(obj_member_sz*num_keys)]) = extended;
-//					set_element_type(stack_buf, loc_stack_i+obj_member_sz+obj_root_sz+(obj_member_sz*num_keys), extended);
 					stackBuf[locStackIndx + Common.member_sz + Common.root_sz + (Common.member_sz * numKeys)] = Common.extended;
 	
-//					*((unsigned int*)&stack_buf[loc_stack_i+obj_member_sz+obj_root_sz+(obj_member_sz*num_keys)+obj_member_key_offx]) = 0;
-//					set_key_offx_value(stack_buf, loc_stack_i+obj_member_sz+obj_root_sz+(obj_member_sz*num_keys), 0);
 					int ls_i = locStackIndx + Common.member_sz + Common.root_sz + (Common.member_sz * numKeys) + Common.member_keyvalue_offx;
 					stackBuf[ls_i] = (byte)(0xff & (0 >>> 24));
 					stackBuf[ls_i + 1] = (byte)(0xff & (0 >>> 16));
 					stackBuf[ls_i + 2] = (byte)(0xff & (0 >>> 8));
 					stackBuf[ls_i + 3] = (byte)(0xff & 0);
 					
-//					stack_i += obj_member_sz;
 					stackBufIdx += Common.member_sz;
 	
-//					if (increase_data_buffer(stack_i - loc_stack_i + obj_member_sz)) {
 					if ((dataIdx + stackBufIdx - locStackIndx + Common.member_sz) >= dataSz) {
 						increaseDataBuffer((int) (dataSz * 1.2 + stackBufIdx - locStackIndx));
 					}
 	
-//					memcpy(&data[data_i], &stack_buf[loc_stack_i], stack_i - loc_stack_i);
 					for (int i=locStackIndx, data_i=dataIdx; i < stackBufIdx; i++, data_i++) {
 						data[data_i] = stackBuf[i];
 					}
 
-//					*(unsigned int*)&stack_buf[loc_stack_i - obj_member_sz + obj_member_key_offx] = data_i + obj_member_key_offx;
-//					set_key_offx_value(stack_buf, loc_stack_i - obj_member_sz, data_i + obj_member_key_offx);
 					stackBuf[locStackIndx - Common.member_sz + Common.member_keyvalue_offx] = 
 							(byte)(0xff & ((dataIdx + Common.member_keyvalue_offx) >>> 24));
 					stackBuf[locStackIndx - Common.member_sz + Common.member_keyvalue_offx + 1] = 
@@ -669,20 +551,10 @@ public class JsonP_Parser {
 					stackBuf[locStackIndx - Common.member_sz + Common.member_keyvalue_offx + 3] = 
 							(byte)(0xff & (dataIdx + Common.member_keyvalue_offx));
 					
-					
-					
-//					*(element_type*)&stack_buf[loc_stack_i - obj_member_sz] = object_ptr;
-//					set_element_type(stack_buf, loc_stack_i - obj_member_sz, object_ptr);
 					stackBuf[locStackIndx - Common.member_sz] = Common.object_ptr;
 	
-	//				std::cout << "set obj pointer to: " << *(unsigned int*)&stack_buf[loc_stack_i - obj_member_sz + obj_member_key_offx] <<
-	//					", for pointer type: " << *(element_type*)&stack_buf[loc_stack_i - obj_member_sz] << std::endl;
-	
-//					to_return = data_i;
 					toReturn = dataIdx;
-//					data_i += (stack_i - loc_stack_i);
 					dataIdx += (stackBufIdx - locStackIndx);
-//					stack_i = loc_stack_i - obj_member_sz;
 					stackBufIdx = locStackIndx - Common.member_sz;
 	
 					break;
@@ -691,15 +563,11 @@ public class JsonP_Parser {
 					lookForKey = true;
 					
 					if (!preserveJson) {
-	//					*(unsigned int*)&stack_buf[stack_i + obj_member_key_offx] = index + 1;
-//						set_key_offx_value(stack_buf, stack_i, index + 1);
 						stackBuf[stackBufIdx + Common.member_keyvalue_offx] = (byte)(0xff & ((jsonIdx + 1) >>> 24));
 						stackBuf[stackBufIdx + Common.member_keyvalue_offx + 1] = (byte)(0xff & ((jsonIdx + 1) >>> 16));
 						stackBuf[stackBufIdx + Common.member_keyvalue_offx + 2] = (byte)(0xff & ((jsonIdx + 1) >>> 8));
 						stackBuf[stackBufIdx + Common.member_keyvalue_offx + 3] = (byte)(0xff & (jsonIdx + 1));
 					} else {
-	//					*(unsigned int*)&stack_buf[stack_i + obj_member_key_offx] = data_i;
-//						set_key_offx_value(stack_buf, stack_i, data_i);
 						stackBuf[stackBufIdx + Common.member_keyvalue_offx] = (byte)(0xff & (dataIdx >>> 24));
 						stackBuf[stackBufIdx + Common.member_keyvalue_offx + 1] = (byte)(0xff & (dataIdx >>> 16));
 						stackBuf[stackBufIdx + Common.member_keyvalue_offx + 2] = (byte)(0xff & (dataIdx >>> 8));
@@ -708,9 +576,7 @@ public class JsonP_Parser {
 						
 					numKeys ++;
 	
-//					parse_key();
 					parseText();
-	//				std::cout << "Key: " << *((char**)&stack_buf[stack_i + obj_member_key_offx]) << ", index =" << index << std::endl;
 	
 					lookForKey = false;
 					localLookForKey = false;
@@ -767,13 +633,8 @@ public class JsonP_Parser {
 		int numElements = 0;
 		int toReturn;
 
-		//std::cout << "Addess: " << &*((char**)&stack_buf[loc_stack_i - obj_member_sz + obj_member_key_offx]) << std::endl;
-//		*((element_type*)&stack_buf[loc_stack_i]) = array;
-//		set_element_type(stack_buf, loc_stack_i, array);
 		stackBuf[locStackIndx] = Common.array;
 		
-//		*(unsigned int*)&stack_buf[loc_stack_i + arry_member_val_offx] = *(unsigned int*)&stack_buf[loc_stack_i - arry_member_sz + arry_member_val_offx];
-//		set_key_offx_value(stack_buf, loc_stack_i, get_val_location(stack_buf, loc_stack_i - arry_member_sz));
 		stackBuf[locStackIndx + Common.member_keyvalue_offx] = 
 				stackBuf[locStackIndx - Common.member_sz + Common.member_keyvalue_offx];
 		stackBuf[locStackIndx + Common.member_keyvalue_offx + 1] = 
@@ -783,65 +644,40 @@ public class JsonP_Parser {
 		stackBuf[locStackIndx + Common.member_keyvalue_offx + 3] = 
 				stackBuf[locStackIndx - Common.member_sz + Common.member_keyvalue_offx + 3];
 		
-//		stack_i += (arry_member_sz + arry_root_sz);
 		stackBufIdx += (Common.member_sz + Common.root_sz);
-//		value_start = index;
 		valueStart = jsonIdx;
 		
-//		*(unsigned int*)&stack_buf[stack_i + arry_member_val_offx] = (use_json) ? index : data_i;
-//		set_key_offx_value(stack_buf, stack_i, (use_json) ? index : data_i);
 		int d_i = ((preserveJson) ? dataIdx : jsonIdx);
 		stackBuf[stackBufIdx + Common.member_keyvalue_offx] = (byte)(0xff & (d_i >> 24));
 		stackBuf[stackBufIdx + Common.member_keyvalue_offx + 1] = (byte)(0xff & (d_i >> 16));
 		stackBuf[stackBufIdx + Common.member_keyvalue_offx + 2] = (byte)(0xff & (d_i >> 8));
 		stackBuf[stackBufIdx + Common.member_keyvalue_offx + 3] = (byte)(0xff & d_i);
 			
-//		++index;
 		jsonIdx++;
 		eatWhiteSpace();
 		
 		//make sure array isn't empty
 		if (json[jsonIdx] == ']') {
-//			*((unsigned int*)&stack_buf[loc_stack_i + arry_member_sz]) = num_elements;
-//			set_uint_a_indx(stack_buf, loc_stack_i + arry_member_sz, num_elements);
 			stackBuf[locStackIndx + Common.member_sz] = (byte)(0xff & (numElements >> 24));
 			stackBuf[locStackIndx + Common.member_sz + 1] = (byte)(0xff & (numElements >> 16));
 			stackBuf[locStackIndx + Common.member_sz + 2] = (byte)(0xff & (numElements >> 8));
 			stackBuf[locStackIndx + Common.member_sz + 3] = (byte)(0xff & numElements);
 			
-			
-//			std::cout << "Arry number keys:" << *((unsigned int*)&stack_buf[loc_stack_i + obj_member_sz]) << ", loc_stack_i: " << loc_stack_i <<
-//				", for key index: " << *((int*)&stack_buf[loc_stack_i + obj_member_sz]) << std::endl; 
-
-//			*((element_type*)&stack_buf[stack_i]) = extended;
-//			set_element_type(stack_buf, stack_i, extended);
 			stackBuf[stackBufIdx] = Common.extended;
 			
-//			*((unsigned int*)&stack_buf[stack_i + arry_member_val_offx]) = 0; 
-//			set_key_offx_value(stack_buf, stack_i, 0);
 			stackBuf[stackBufIdx] = 0;
 			stackBuf[stackBufIdx + 1] = 0;
 			stackBuf[stackBufIdx + 2] = 0;
 			stackBuf[stackBufIdx + 3] = 0;
 			
-//			stack_i += arry_member_sz;
-			
-
-//			if (increase_data_buffer(stack_i - loc_stack_i + arry_member_sz)) {
 			if ((stackBufIdx - locStackIndx + Common.member_sz + dataIdx) >= dataSz) {			
-//				std::cout << "increasing the data buffer" << std::endl;
-//				data_sz = (unsigned int)data_sz * 1.2 + stack_i - loc_stack_i;
-//				data = (byte*) realloc(data, data_sz);
 				increaseDataBuffer(stackBufIdx - locStackIndx + Common.member_sz + dataIdx);
 			}
 
-//			memcpy(&data[data_i], &stack_buf[loc_stack_i], stack_i - loc_stack_i);
 			for (int i=locStackIndx, data_i=dataIdx; i < stackBufIdx; i++, data_i++) {
 				data[data_i] = stackBuf[i];
 			}
 
-//			*(unsigned int*)&stack_buf[loc_stack_i - arry_member_sz + arry_member_val_offx] = data_i + arry_member_val_offx;
-//			set_key_offx_value(stack_buf, loc_stack_i - arry_member_sz, data_i + arry_member_val_offx);
 			stackBuf[locStackIndx - Common.member_sz + Common.member_keyvalue_offx] = 
 					(byte)(0xff & ((dataIdx + Common.member_keyvalue_offx) >> 24));
 			stackBuf[locStackIndx - Common.member_sz + Common.member_keyvalue_offx + 1] = 
@@ -851,9 +687,6 @@ public class JsonP_Parser {
 			stackBuf[locStackIndx - Common.member_sz + Common.member_keyvalue_offx + 3] = 
 					(byte)(0xff & (dataIdx + Common.member_keyvalue_offx));
 			
-			
-//			*(element_type*)&stack_buf[loc_stack_i - obj_member_sz] = array_ptr;
-//			set_element_type(stack_buf, loc_stack_i - obj_member_sz, array_ptr);
 			stackBuf[locStackIndx - Common.member_sz] = Common.array_ptr;
 
 			toReturn = dataIdx;
@@ -872,13 +705,6 @@ public class JsonP_Parser {
 		
 		while (true) {
 
-//			if (increase_stack_buffer()) {
-////				std::cout << "old stack_buf_sz: " << stack_buf_sz;
-//				stack_buf_sz = (unsigned int) stack_buf_sz * 1.2;
-////				std::cout << ", new stack_buf_sz: " << stack_buf_sz << std::endl;
-//				stack_buf = (byte*) realloc(stack_buf, stack_buf_sz);
-//				stats.stack_buf_increases++;
-//			}
 			if (stackBufSz <= stackBufIdx + 50) {
 				increaseStackBuffer(512);
 			}
@@ -899,14 +725,11 @@ public class JsonP_Parser {
 					throw new JsonP_ParseException("parse error, in array, looking for another value at index: " + jsonIdx);
 				} else {
 					valueStart = jsonIdx;
-//					*(unsigned int*)&stack_buf[stack_i + arry_member_val_offx] = (use_json) ? index : data_i;
-//					set_key_offx_value(stack_buf, stack_i, (use_json) ? index : data_i);
 					d_i = ((preserveJson) ? dataIdx : jsonIdx);
 					stackBuf[stackBufIdx + Common.member_keyvalue_offx] = (byte)(0xff & (d_i >> 24));
 					stackBuf[stackBufIdx + Common.member_keyvalue_offx + 1] = (byte)(0xff & (d_i >> 16));
 					stackBuf[stackBufIdx + Common.member_keyvalue_offx + 2] = (byte)(0xff & (d_i >> 8));
 					stackBuf[stackBufIdx + Common.member_keyvalue_offx + 3] = (byte)(0xff & d_i);
-					
 
 					jsonIdx++;
 					lookForValue = true;
@@ -919,42 +742,28 @@ public class JsonP_Parser {
 			}
 		}
 		
-//		*((unsigned int*)&stack_buf[loc_stack_i + arry_member_sz]) = num_elements;
-//		set_uint_a_indx(stack_buf, loc_stack_i + arry_member_sz, num_elements);
 		stackBuf[locStackIndx + Common.member_sz] = (byte)(0xff & (numElements >> 24));
 		stackBuf[locStackIndx + Common.member_sz + 1] = (byte)(0xff & (numElements >> 16));
 		stackBuf[locStackIndx + Common.member_sz + 2] = (byte)(0xff & (numElements >> 8));
 		stackBuf[locStackIndx + Common.member_sz + 3] = (byte)(0xff & numElements);
 		
-		
-//		*((element_type*)&stack_buf[stack_i]) = extended;
-//		set_element_type(stack_buf, stack_i, extended);
 		stackBuf[stackBufIdx] = Common.extended;
 		
-//		*((unsigned int*)&stack_buf[stack_i + arry_member_val_offx]) = 0; 
-//		set_key_offx_value(stack_buf, stack_i, 0);
 		stackBuf[stackBufIdx + Common.member_keyvalue_offx] = 0;
 		stackBuf[stackBufIdx + Common.member_keyvalue_offx + 1] = 0;
 		stackBuf[stackBufIdx + Common.member_keyvalue_offx + 2] = 0;
 		stackBuf[stackBufIdx + Common.member_keyvalue_offx + 3] = 0;
 		
-//		stack_i += arry_member_sz;
 		stackBufIdx += Common.member_sz;
 		
 		if ((stackBufIdx - locStackIndx + Common.member_sz + dataIdx) >= dataSz) {			
-//			std::cout << "increasing the data buffer" << std::endl;
-//			data_sz = (unsigned int)data_sz * 1.2 + stack_i - loc_stack_i;
-//			data = (byte*) realloc(data, data_sz);
 			increaseDataBuffer(stackBufIdx - locStackIndx + Common.member_sz + dataIdx);
 		}
 
-//		memcpy(&data[data_i], &stack_buf[loc_stack_i], stack_i - loc_stack_i);
 		for (int i=locStackIndx, data_i=dataIdx; i < stackBufIdx; i++, data_i++) {
 			data[data_i] = stackBuf[i];
 		}
 		
-//		*(unsigned int*)&stack_buf[loc_stack_i - arry_member_sz + arry_member_val_offx] = data_i + arry_member_val_offx;
-//		set_key_offx_value(stack_buf, loc_stack_i - arry_member_sz, data_i + arry_member_val_offx);
 		stackBuf[locStackIndx - Common.member_sz + Common.member_keyvalue_offx] = 
 				(byte)(0xff & ((dataIdx + Common.member_keyvalue_offx) >> 24));
 		stackBuf[locStackIndx - Common.member_sz + Common.member_keyvalue_offx + 1] = 
@@ -964,9 +773,6 @@ public class JsonP_Parser {
 		stackBuf[locStackIndx - Common.member_sz + Common.member_keyvalue_offx + 3] = 
 				(byte)(0xff & (dataIdx + Common.member_keyvalue_offx));
 		
-		
-//		*(element_type*)&stack_buf[loc_stack_i - obj_member_sz] = array_ptr;
-//		set_element_type(stack_buf, loc_stack_i - obj_member_sz, array_ptr);
 		stackBuf[locStackIndx - Common.member_sz] = Common.array_ptr;
 
 		toReturn = dataIdx;
@@ -991,9 +797,7 @@ public class JsonP_Parser {
 	 * Increase data buffer
 	 */
 	private void increaseDataBuffer(int newSz) {
-//		data_sz = (unsigned int) data_sz * 1.2 + stack_i - loc_stack_i;
 		dataSz = newSz;
-//		data = (byte*) realloc(data, data_sz);
 		byte temp[] = data; 
 		data = new byte[dataSz];
 		
@@ -1053,6 +857,8 @@ public class JsonP_Parser {
 		public int stackIncreases;
 		public int dataIncreases;
 	}
+	
+	
 }
 
 

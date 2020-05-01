@@ -73,4 +73,233 @@ public class Common {
 	};
 
 	
+	/*
+	 * Used to compare null terminated strings
+	 * simply compares byte value **Assumes length at least 1
+	 * 
+	 * @param left - start index for left string
+	 * @param right - start index for right string
+	 * @param data - array holding string
+	 * 
+	 * returns 0=same, -1=left less, 1=left more
+	 */
+	public static int strcmp(int left, int right, byte[] data) {
+//System.out.println("String cmp, left: " + left + ", right: " + right + "\nleft:");
+//for (int i=0; i<3; i++)
+//	System.out.print((char)data[left+i] + " ");
+//System.out.println("\nright:");
+//for (int i=0; i<3; i++)
+//	System.out.print((char)data[right + i] + " ");
+		do {
+			if (data[left] < data[right])
+				return -1;
+			else if (data[left] > data[right])
+				return 1;
+			
+			left++;
+			right++;
+		} while (data[left] != '\0' && data[right] != '\0'); 
+		
+		if (data[left] == data[right])
+			return 0;
+		else if (data[left] == '\0')
+			return -1;
+		else if (data[right] == '\0')
+			return 1;
+		else if (data[left] < data[right])
+			return -1;
+		else
+			return 1;
+	}
+	
+	
+	
+	/*
+	 * Used to sort keys 
+	 */
+	public static void sortKeys(int low, int high, byte[] data, byte[] meta, byte[] stackBuf) {
+		int pivot = high;
+		int lo = low, hi = high;
+		int lowPtr, highPtr, pivotPtr;
+		byte typeTemp;
+
+		if ((high-low) / Common.member_sz < 1)
+			return;
+		
+		if ((high-low) / Common.member_sz == 1) {
+			lowPtr =  ((stackBuf[low + element_type_sz] << 24) & 0xFF000000) |
+		  	 	  	  ((stackBuf[low + element_type_sz + 1] << 16) & 0x00FF0000) |
+			 	  	  ((stackBuf[low + element_type_sz + 2] << 8) & 0x0000FF00) |
+	  		 	  	  (stackBuf[low + element_type_sz + 3] & 0x000000FF);
+
+			highPtr =  ((stackBuf[high + element_type_sz] << 24) & 0xFF000000) |
+					   ((stackBuf[high + element_type_sz + 1] << 16) & 0x00FF0000) |
+	  	 	  	   	   ((stackBuf[high + element_type_sz + 2] << 8) & 0x0000FF00) |
+	  	 	  	   	   (stackBuf[high + element_type_sz + 3] & 0x000000FF);
+			
+			if (stackBuf[low] == Common.object_ptr || stackBuf[low] == Common.array_ptr) {
+				lowPtr =  ((meta[lowPtr] << 24) & 0xFF000000) |
+			  	 	  	  ((meta[lowPtr + 1] << 16) & 0x00FF0000) |
+				 	  	  ((meta[lowPtr + 2] << 8) & 0x0000FF00) |
+		  		 	  	  (meta[lowPtr + 3] & 0x000000FF);
+			}
+			
+			if (stackBuf[high] == Common.object_ptr || stackBuf[high] == Common.array_ptr) {
+				highPtr =  ((meta[highPtr] << 24) & 0xFF000000) |
+			  	 	  	  ((meta[highPtr + 1] << 16) & 0x00FF0000) |
+				 	  	  ((meta[highPtr + 2] << 8) & 0x0000FF00) |
+		  		 	  	  (meta[highPtr + 3] & 0x000000FF);
+			}
+
+			if (strcmp(lowPtr, highPtr, data) > 0 ) {
+				typeTemp = stackBuf[high];
+				stackBuf[high] = stackBuf[low];			//swap element type
+				stackBuf[low] = typeTemp;
+
+				//swap elements
+				typeTemp = stackBuf[low + element_type_sz];
+				stackBuf[low + element_type_sz] = stackBuf[high + element_type_sz];
+				stackBuf[high + element_type_sz] = typeTemp;
+				typeTemp = stackBuf[low + element_type_sz + 1];
+				stackBuf[low + element_type_sz + 1] = stackBuf[high + element_type_sz + 1];
+				stackBuf[high + element_type_sz + 1] = typeTemp;
+				typeTemp = stackBuf[low + element_type_sz + 2];
+				stackBuf[low + element_type_sz + 2] = stackBuf[high + element_type_sz + 2];
+				stackBuf[high + element_type_sz + 2] = typeTemp;
+				typeTemp = stackBuf[low + element_type_sz + 3];
+				stackBuf[low + element_type_sz + 3] = stackBuf[high + element_type_sz + 3];
+				stackBuf[high + element_type_sz + 3] = typeTemp;
+			}
+			
+			return;
+		}
+		
+		high -= Common.member_sz;
+
+		//used to hold int pointer to first byte of String in data
+		pivotPtr =  ((stackBuf[pivot + element_type_sz] << 24) & 0xFF000000) |
+					((stackBuf[pivot + element_type_sz + 1] << 16) & 0x00FF0000) |
+					((stackBuf[pivot + element_type_sz + 2] << 8) & 0x0000FF00) |
+					(stackBuf[pivot + element_type_sz + 3] & 0x000000FF);
+		
+		if (stackBuf[pivot] == Common.object_ptr || stackBuf[pivot] == Common.array_ptr) {
+			pivotPtr =  ((meta[pivotPtr] << 24) & 0xFF000000) |
+		  	 	  	  ((meta[pivotPtr + 1] << 16) & 0x00FF0000) |
+			 	  	  ((meta[pivotPtr + 2] << 8) & 0x0000FF00) |
+	  		 	  	  (meta[pivotPtr + 3] & 0x000000FF);
+		}
+		
+		
+		while (true) {
+			lowPtr =  ((stackBuf[low + element_type_sz] << 24) & 0xFF000000) |
+	  		  		  ((stackBuf[low + element_type_sz + 1] << 16) & 0x00FF0000) |
+	  		  		  ((stackBuf[low + element_type_sz + 2] << 8) & 0x0000FF00) |
+	  		  	 	  (stackBuf[low + element_type_sz + 3] & 0x000000FF);
+
+			highPtr =  ((stackBuf[high + element_type_sz] << 24) & 0xFF000000) |
+		  		   	   ((stackBuf[high + element_type_sz + 1] << 16) & 0x00FF0000) |
+		  		  	   ((stackBuf[high + element_type_sz + 2] << 8) & 0x0000FF00) |
+		  	 	  	   (stackBuf[high + element_type_sz + 3] & 0x000000FF);
+
+			if (stackBuf[low] == Common.object_ptr || stackBuf[low] == Common.array_ptr) {
+				lowPtr =  ((meta[lowPtr] << 24) & 0xFF000000) |
+			  	 	  	  ((meta[lowPtr + 1] << 16) & 0x00FF0000) |
+				 	  	  ((meta[lowPtr + 2] << 8) & 0x0000FF00) |
+		  		 	  	  (meta[lowPtr + 3] & 0x000000FF);
+			}
+			
+			if (stackBuf[high] == Common.object_ptr || stackBuf[high] == Common.array_ptr) {
+				highPtr =  ((meta[highPtr] << 24) & 0xFF000000) |
+			  	 	  	  ((meta[highPtr + 1] << 16) & 0x00FF0000) |
+				 	  	  ((meta[highPtr + 2] << 8) & 0x0000FF00) |
+		  		 	  	  (meta[highPtr + 3] & 0x000000FF);
+			}
+
+			while (strcmp(lowPtr, pivotPtr, data) < 0 && low < high) {
+				low += member_sz;
+				lowPtr =  ((stackBuf[low + element_type_sz] << 24) & 0xFF000000) |
+	  		  		 	  ((stackBuf[low + element_type_sz + 1] << 16) & 0x00FF0000) |
+	  		  		 	  ((stackBuf[low + element_type_sz + 2] << 8) & 0x0000FF00) |
+	  		  		 	  (stackBuf[low + element_type_sz + 3] & 0x000000FF);
+				
+				if (stackBuf[low] == Common.object_ptr || stackBuf[low] == Common.array_ptr) {
+					lowPtr =  ((meta[lowPtr] << 24) & 0xFF000000) |
+				  	 	  	  ((meta[lowPtr + 1] << 16) & 0x00FF0000) |
+					 	  	  ((meta[lowPtr + 2] << 8) & 0x0000FF00) |
+			  		 	  	  (meta[lowPtr + 3] & 0x000000FF);
+				}
+			}
+			
+			while (strcmp(highPtr, pivotPtr, data) >= 0 && low < high) {
+				high -= member_sz;
+				highPtr =  ((stackBuf[high + element_type_sz] << 24) & 0xFF000000) |
+	  		  		 	   ((stackBuf[high + element_type_sz + 1] << 16) & 0x00FF0000) |
+	  		  		 	   ((stackBuf[high + element_type_sz + 2] << 8) & 0x0000FF00) |
+	  		  		 	   (stackBuf[high + element_type_sz + 3] & 0x000000FF);
+				
+				if (stackBuf[high] == Common.object_ptr || stackBuf[high] == Common.array_ptr) {
+					highPtr =  ((meta[highPtr] << 24) & 0xFF000000) |
+				  	 	  	  ((meta[highPtr + 1] << 16) & 0x00FF0000) |
+					 	  	  ((meta[highPtr + 2] << 8) & 0x0000FF00) |
+			  		 	  	  (meta[highPtr + 3] & 0x000000FF);
+				}
+			}
+			
+			
+			if (low == high) {
+				if (strcmp(highPtr, pivotPtr, data) >= 0) {
+					typeTemp = stackBuf[high];
+					stackBuf[high] = stackBuf[pivot];			//swap element type
+					stackBuf[pivot] = typeTemp;					
+					
+					//swap elements
+					typeTemp = stackBuf[pivot + element_type_sz];
+					stackBuf[pivot + element_type_sz] = stackBuf[high + element_type_sz];
+					stackBuf[high + element_type_sz] = typeTemp;
+					typeTemp = stackBuf[pivot + element_type_sz + 1];
+					stackBuf[pivot + element_type_sz + 1] = stackBuf[high + element_type_sz + 1];
+					stackBuf[high + element_type_sz + 1] = typeTemp;
+					typeTemp = stackBuf[pivot + element_type_sz + 2];
+					stackBuf[pivot + element_type_sz + 2] = stackBuf[high + element_type_sz + 2];
+					stackBuf[high + element_type_sz + 2] = typeTemp;
+					typeTemp = stackBuf[pivot + element_type_sz + 3];
+					stackBuf[pivot + element_type_sz + 3] = stackBuf[high + element_type_sz + 3];
+					stackBuf[high + element_type_sz + 3] = typeTemp;
+					
+					if (lo == high)
+						high += member_sz;
+					
+					sortKeys(lo, high-member_sz, data, meta, stackBuf);
+					sortKeys(high, hi, data, meta, stackBuf);
+				} else {
+					if (lo == high)
+						high += member_sz;
+					
+					sortKeys(lo, high, data, meta, stackBuf);
+					sortKeys(high+member_sz, hi, data, meta, stackBuf);
+				}
+				
+				return;
+			}
+			
+			typeTemp = stackBuf[high];
+			stackBuf[high] = stackBuf[low];			//swap element type
+			stackBuf[low] = typeTemp;				
+			
+			//swap elements
+			typeTemp = stackBuf[low + element_type_sz];
+			stackBuf[low + element_type_sz] = stackBuf[high + element_type_sz];
+			stackBuf[high + element_type_sz] = typeTemp;
+			typeTemp = stackBuf[low + element_type_sz + 1];
+			stackBuf[low + element_type_sz + 1] = stackBuf[high + element_type_sz + 1];
+			stackBuf[high + element_type_sz + 1] = typeTemp;
+			typeTemp = stackBuf[low + element_type_sz + 2];
+			stackBuf[low + element_type_sz + 2] = stackBuf[high + element_type_sz + 2];
+			stackBuf[high + element_type_sz + 2] = typeTemp;
+			typeTemp = stackBuf[low + element_type_sz + 3];
+			stackBuf[low + element_type_sz + 3] = stackBuf[high + element_type_sz + 3];
+			stackBuf[high + element_type_sz + 3] = typeTemp;
+			
+		}
+	}
 }
