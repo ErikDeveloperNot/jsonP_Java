@@ -1,6 +1,9 @@
 package net.erikdevelopernot.jsonP;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileReader;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
@@ -29,24 +32,39 @@ import net.erikdevelopernot.jsonP.parsers.*;
 public class Driver {
 
 	public static void main(String[] args) throws Exception {
+		//uncomment to test manual json creation
+		testManual();
+		
 		//uncomment to test Fangiong
 //		testFangiongParser("/Users/user1/Downloads/large.json");
+//		testFangiongParser("/Users/user1/eclipse-workspace/jsonP_java/examples/simple5.json");
 				
 		//uncomment to test Gson
 //		testGson("/Users/user1/Downloads/large.json");
+//		testGson("/Users/user1/eclipse-workspace/jsonP_java/examples/simple5.json");
 		
 //		byte[] jsonData = Files.readAllBytes(Paths.get("/Users/user1/eclipse-workspace/jsonP_java/examples/simple5.json"));
 //		byte[] jsonData = Files.readAllBytes(Paths.get("/Users/user1/Downloads/large.json"));
-		byte[] jsonData = Files.readAllBytes(Paths.get("/Users/user1/udemy/CPP/UdemyCPP/jsonP_dyn_drvr/samples/med.json.orig"));
+//		byte[] jsonData = Files.readAllBytes(Paths.get("/Users/user1/udemy/CPP/UdemyCPP/jsonP_dyn_drvr/samples/med.json.orig"));
 		
-		//uncomment to test Jackson
-//		testJackson(jsonData);
 		
 		long s = System.currentTimeMillis();
 
-		JsonP_Parser parser = new JsonP_Parser(jsonData); //, Common.CONVERT_NUMERICS);
+//		byte[] jsonData = getBytes("/Users/user1/Downloads/large.json");
+		byte[] jsonData = getBytes("/Users/user1/eclipse-workspace/jsonP_java/examples/simple5.json");
+
+		
+		//uncomment to test Jackson
+//		testJackson(jsonData);
+
+		
+		JsonP_Parser parser = new JsonP_Parser(jsonData, Common.PRESERVE_JSON); //, Common.CONVERT_NUMERICS);
 		JsonPJson jsonPJson = parser.parse();
-////jsonPJson.crap();		
+////jsonPJson.crap();	
+//jsonData=null;
+//parser=null;
+//System.gc();
+
 		long f = System.currentTimeMillis();
 		
 		byte[] j = jsonPJson.stringify(0, true);
@@ -59,7 +77,61 @@ public class Driver {
 		System.out.println("  stack: " + parser.getParseStats().stackIncreases);
 		System.out.println("  data: " + parser.getParseStats().dataIncreases);
 		System.out.println("Stringify time: " + (f2-f) + "m/s");
-//		System.console().readLine();
+System.gc();
+// start remove
+int id = jsonPJson.getObjectId("/obj_ptr_will_break/key__2", "/");
+System.out.println("id: " + id);
+// end remove
+		System.console().readLine();
+	}
+	
+	
+	private static void testManual() {
+		try {
+			JsonPJson json = new JsonPJson(Common.object, 5, 1024, 0);
+		
+			json.add_value_type(Common.string, 0, "key1", "value1");
+			json.add_value_type(Common.string, 0, "akey2", "value2");
+			json.add_value_type(Common.string, 0, "Key3", "value3");
+			json.add_value_type(Common.string, 0, "akey4", "value4");
+			json.add_value_type(Common.string, 0, "AKey5", "value5");
+			json.add_value_type(Common.bool_true, 0, "Bool_T", null);
+			json.add_value_type(Common.bool_false, 0, "Bool_f", null);
+			json.add_value_type(Common.numeric_long, 0, "nLong", new Long(987654321));
+			json.add_value_type(Common.numeric_double, 0, "nDouble", new Double(12345.9876));
+			json.add_value_type(Common.nil, 0, "nil", null);
+			
+			System.out.println(new String(json.stringify(0, true)));
+			
+			int id = json.getObjectId("/Bool_f", "/");
+			System.out.println(id);
+			
+			System.exit(1);
+		} catch (JsonPException e) {
+			e.printStackTrace();
+			System.exit(1);
+		}
+	}
+	
+	
+	private static byte[] getBytes(String fileName) {
+		try {
+			File f = new File(fileName);
+			FileInputStream fis = new FileInputStream(f);
+			byte bytes[] = new byte[(int)f.length()];
+			fis.read(bytes);
+//			for (int i=0; i<bytes.length; i++) {
+//				bytes[i] = (byte)fis.read();
+//			System.out.println(bytes[i]);	
+//			}
+			
+			return bytes;
+		} catch (Exception e) {
+			e.printStackTrace();
+			System.exit(-1);
+		}
+		
+		return null;
 	}
 	
 	
@@ -69,10 +141,15 @@ public class Driver {
 			
 			ObjectMapper objectMapper = new ObjectMapper();
 			JsonNode rootNode = objectMapper.readTree(jsonData);
-			
+
 			long f = System.currentTimeMillis();
 			
+			byte[] s2 = objectMapper.writeValueAsBytes(rootNode);
+			
+			long f2 = System.currentTimeMillis();
+			
 			System.out.println("Jackson Parse Time: " + (f-s) + "m/s");
+			System.out.println("  Stringify time: " + (f2-f) + "m/s");
 			System.console().readLine();
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -86,10 +163,15 @@ public class Driver {
 			long s = System.currentTimeMillis();
 			
 			JsonElement jsonElement = JsonParser.parseReader(fileReader);
-			
+
 			long f = System.currentTimeMillis();
 			
+			String s2 = jsonElement.toString();
+			
+			long f2 = System.currentTimeMillis();
+			
 			System.out.println("Google GSON Parse Time: " + (f-s) + "m/s");
+			System.out.println("  Stringify time: " + (f2-f) + "m/s");
 			System.console().readLine();
 		
 		} catch (Exception e) {
@@ -105,10 +187,15 @@ public class Driver {
 			
 			JSONParser parser = new JSONParser();
 			JSONObject json = (JSONObject) parser.parse(fileReader);
-			
+
 			long f = System.currentTimeMillis();
+
+			String s2 = json.toJSONString();
+			
+			long f2 = System.currentTimeMillis();
 			
 			System.out.println("Fangiong Parse Time: " + (f-s) + "m/s");
+			System.out.println("  Stringify time: " + (f2-f) + "m/s");
 			System.console().readLine();
 		} catch (Exception e) {
 			e.printStackTrace();

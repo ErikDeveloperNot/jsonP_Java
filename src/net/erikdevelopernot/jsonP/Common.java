@@ -40,6 +40,8 @@ public class Common {
 	public static final byte search = 15;
 	public static final byte invalid = 16;
 	
+//	public static enum ElementType { OBJECT, ARRAY, STRING, NUMERIC_LONG, NUMERIC_DOUBLE, BOOL, NULL };
+	
 	//size of meta data types (the +1 is for heap/stack index. not used in c++ version)
 	public static final int element_type_sz = 1;
 	public static final int member_sz = element_type_sz + 4; // + 1;
@@ -90,6 +92,15 @@ public class Common {
 //System.out.println("\nright:");
 //for (int i=0; i<3; i++)
 //	System.out.print((char)data[right + i] + " ");
+
+		/*
+		 * Special case if comparing an empty element its key location will be set to 0
+		 */
+		if (left == 0)
+			return 1;
+		if (right == 0)
+			return -1;
+		
 		do {
 			if (data[left] < data[right])
 				return -1;
@@ -112,6 +123,56 @@ public class Common {
 			return 1;
 	}
 	
+
+	
+	/*
+	 * Used to compare null terminated strings
+	 * simply compares byte value **Assumes length at least 1
+	 * 
+	 * @param left - start index for left string
+	 * @param right - start index for right string
+	 * @param data - array holding string
+	 * 
+	 * returns 0=same, -1=left less, 1=left more
+	 */
+	public static int strcmp(byte[] left, int right, byte[] data) {
+//System.out.println("String cmp, left: " + left + ", right: " + right + "\nleft:");
+//for (int i=0; i<3; i++)
+//	System.out.print((char)data[left+i] + " ");
+//System.out.println("\nright:");
+//for (int i=0; i<3; i++)
+//	System.out.print((char)data[right + i] + " ");
+		int i = 0;		//index for left
+		
+		/*
+		 * Special case if comparing an empty element its key location will be set to 0
+		 */
+		if (right == 0)
+			return -1;
+		
+		do {
+			if (left[i] < data[right])
+				return -1;
+			else if (left[i] > data[right])
+				return 1;
+			
+			i++;
+			right++;
+		} while (i < left.length && data[right] != '\0'); 
+		
+		if ((i == left.length) && (data[right] == '\0'))
+			return 0;
+		else if (i == left.length)
+			return -1;
+		else if (data[right] == '\0')
+			return 1;
+		else if (left[i] < data[right]) {
+			System.err.println("Didnt think this could be seen, Common.strcmp()");
+			return -1;
+		} else
+			return 1;
+	}
+
 	
 	
 	/*
@@ -152,6 +213,7 @@ public class Common {
 			}
 
 			if (strcmp(lowPtr, highPtr, data) > 0 ) {
+//			if ( (stackBuf[low] == Common.empty) || (strcmp(lowPtr, highPtr, data) > 0 ) ) {
 				typeTemp = stackBuf[high];
 				stackBuf[high] = stackBuf[low];			//swap element type
 				stackBuf[low] = typeTemp;
@@ -216,6 +278,7 @@ public class Common {
 			}
 
 			while (strcmp(lowPtr, pivotPtr, data) < 0 && low < high) {
+//			while ( ((stackBuf[low] != Common.empty) && (strcmp(lowPtr, pivotPtr, data) < 0)) && (low < high) ) {
 				low += member_sz;
 				lowPtr =  ((stackBuf[low + element_type_sz] << 24) & 0xFF000000) |
 	  		  		 	  ((stackBuf[low + element_type_sz + 1] << 16) & 0x00FF0000) |
@@ -231,6 +294,7 @@ public class Common {
 			}
 			
 			while (strcmp(highPtr, pivotPtr, data) >= 0 && low < high) {
+//			while ( ((stackBuf[high] == Common.empty) || (strcmp(highPtr, pivotPtr, data) < 0)) && (low < high) ) {
 				high -= member_sz;
 				highPtr =  ((stackBuf[high + element_type_sz] << 24) & 0xFF000000) |
 	  		  		 	   ((stackBuf[high + element_type_sz + 1] << 16) & 0x00FF0000) |
@@ -248,6 +312,7 @@ public class Common {
 			
 			if (low == high) {
 				if (strcmp(highPtr, pivotPtr, data) >= 0) {
+//				if ( (stackBuf[high] == Common.empty) || (strcmp(highPtr, pivotPtr, data) >= 0) ) {
 					typeTemp = stackBuf[high];
 					stackBuf[high] = stackBuf[pivot];			//swap element type
 					stackBuf[pivot] = typeTemp;					
@@ -302,4 +367,169 @@ public class Common {
 			
 		}
 	}
+	
+	
+	/*
+	 * B-search for sort, list if not
+	 * 
+	 * @param key - null terminated array of key to search for
+	 * @param start - lower bounds of keys, inclusive
+	 * @param end - upper bounds of keys, inclusive
+	 * @param meta - metadata
+	 * @param data - json txt data
+	 * @param retPtr - return pointer type for Array/Object
+	 * @param dontSortKeys - are keys sorted
+	 * 
+	 * returns object id if found or 0 or -1 if not
+	 */
+	public static int search_keys(byte[] key, int start, int end, byte[] meta, byte[] data, 
+											boolean retPtr, boolean dontSortKeys) {
+	
+		int mid; // = (((end - start) / sizeof(obj_member)) / 2) * sizeof(obj_member) + start;
+//		int ext = get_ext_start(meta, end + obj_member_sz);
+		int ext = ((meta[Common.member_keyvalue_offx + end + Common.member_sz] << 24) & 0xFF000000) |
+				  ((meta[Common.member_keyvalue_offx + end + Common.member_sz + 1] << 16) & 0x00FF0000) |
+				  ((meta[Common.member_keyvalue_offx + end + Common.member_sz + 2] << 8) & 0x0000FF00) |
+				  (meta[Common.member_keyvalue_offx + end + Common.member_sz + 3] & 0x000000FF);
+
+		
+		
+		int keyCmp;
+		byte type;
+		int result;
+
+		if (!dontSortKeys) {
+			//keys are sort binary search
+			while (start <= end) {
+				mid = (int)(((end - start) / Common.member_sz) / 2) * Common.member_sz + start;
+				
+				type = meta[mid];
+
+				if (type == Common.empty) {
+					end = mid - Common.member_sz;
+					continue;
+				}
+
+//				key_cmp = get_key_location(meta, mid);
+				keyCmp = ((meta[mid + Common.member_keyvalue_offx] << 24) & 0xFF000000) |
+						  ((meta[mid + Common.member_keyvalue_offx + 1] << 16) & 0x00FF0000) |
+						  ((meta[mid + Common.member_keyvalue_offx + 2] << 8) & 0x0000FF00) |
+						  (meta[mid + Common.member_keyvalue_offx + 3] & 0x000000FF);
+
+				
+				if ( type == object_ptr || type == array_ptr)
+					//key_cmp = get_key_location(meta, key_cmp);
+//					key_cmp = get_uint_a_indx(meta, key_cmp);
+					keyCmp = ((meta[keyCmp] << 24) & 0xFF000000) |
+							  ((meta[keyCmp + 1] << 16) & 0x00FF0000) |
+							  ((meta[keyCmp + 2] << 8) & 0x0000FF00) |
+							  (meta[keyCmp + 3] & 0x000000FF);
+
+				//std::cout << "key_cmp = " << key_cmp << ", char: " << data+key_cmp << std::endl;
+//				result = std::strcmp(key, data+key_cmp);
+				result = strcmp(key, keyCmp, data);
+				
+				//std::cout << "start: " << start << ", mid: " << mid << ", end: " << end << ", result: " << result << std::endl;
+
+				if (result == 0) {
+					//found
+					if ((type == object_ptr || type == array_ptr) && !retPtr) {
+						//return get_key_location(meta, mid + obj_member_key_offx) - element_type_sz;
+//						return get_key_location(meta, mid) - element_type_sz;
+						return ((meta[mid + member_keyvalue_offx] << 24) & 0xFF000000) |
+							   ((meta[mid + member_keyvalue_offx + 1] << 16) & 0x00FF0000) |
+							   ((meta[mid + member_keyvalue_offx + 2] << 8) & 0x0000FF00) |
+							   (meta[mid + member_keyvalue_offx + 3] & 0x000000FF) - 1;
+					} else {
+						return mid;
+					}
+				} else if (result < 0) {
+					end = mid - member_sz;
+				} else {
+					start = mid + member_sz;
+				}
+			}
+		} else {
+			//keys not sorted go through each
+			while (start <= end) {
+				type = meta[start];
+//				key_cmp = get_key_location(meta, start);
+				keyCmp = ((meta[start + member_keyvalue_offx] << 24) & 0xFF000000) |
+						   ((meta[start + member_keyvalue_offx + 1] << 16) & 0x00FF0000) |
+						   ((meta[start + member_keyvalue_offx + 2] << 8) & 0x0000FF00) |
+						   (meta[start + member_keyvalue_offx + 3] & 0x000000FF);
+
+				if ( type == object_ptr || type == array_ptr) {
+//					key_cmp = get_uint_a_indx(meta, key_cmp);
+					keyCmp = ((meta[keyCmp] << 24) & 0xFF000000) |
+							   ((meta[keyCmp + 1] << 16) & 0x00FF0000) |
+							   ((meta[keyCmp + 2] << 8) & 0x0000FF00) |
+							   (meta[keyCmp + 3] & 0x000000FF);
+
+				}
+
+//				result = std::strcmp(key, data+key_cmp);
+				result = strcmp(key, keyCmp, data);
+
+				if (result == 0) {
+					//found
+					if ((type == object_ptr || type == array_ptr) && !retPtr) {
+//						return get_key_location(meta, start) - element_type_sz;
+						return ((meta[start + member_keyvalue_offx] << 24) & 0xFF000000) |
+								   ((meta[start + member_keyvalue_offx + 1] << 16) & 0x00FF0000) |
+								   ((meta[start + member_keyvalue_offx + 2] << 8) & 0x0000FF00) |
+								   (meta[start + member_keyvalue_offx + 3] & 0x000000FF) - 1;
+					} else {
+						return start;
+					}
+				} else {
+					start += member_sz;
+				}
+			}
+		}
+
+		while (ext > 0) {
+			type = meta[ext];
+			//key_cmp = get_key_location(meta, ext + obj_member_key_offx);
+//			key_cmp = get_key_location(meta, ext);
+			keyCmp = ((meta[ext + member_keyvalue_offx] << 24) & 0xFF000000) |
+					   ((meta[ext + member_keyvalue_offx + 1] << 16) & 0x00FF0000) |
+					   ((meta[ext + member_keyvalue_offx + 2] << 8) & 0x0000FF00) |
+					   (meta[ext + member_keyvalue_offx + 3] & 0x000000FF);
+
+			if ( type == object_ptr || type == array_ptr) {
+//				key_cmp = get_uint_a_indx(meta, key_cmp);
+				keyCmp = ((meta[keyCmp] << 24) & 0xFF000000) |
+						   ((meta[keyCmp + 1] << 16) & 0x00FF0000) |
+						   ((meta[keyCmp + 2] << 8) & 0x0000FF00) |
+						   (meta[keyCmp + 3] & 0x000000FF);
+			}
+
+//			result = std::strcmp(key, data+key_cmp);
+			result = strcmp(key, keyCmp, data);
+
+			if (result == 0) {
+				//found
+				if ((type == object_ptr || type == array_ptr) && !retPtr) {
+					//return get_key_location(meta, ext + obj_member_key_offx) - element_type_sz;
+//					return get_key_location(meta, ext) - element_type_sz;
+					return ((meta[ext + member_keyvalue_offx] << 24) & 0xFF000000) |
+							   ((meta[ext + member_keyvalue_offx + 1] << 16) & 0x00FF0000) |
+							   ((meta[ext + member_keyvalue_offx + 2] << 8) & 0x0000FF00) |
+							   (meta[ext + member_keyvalue_offx + 3] & 0x000000FF) - 1;
+				} else {
+					return ext;
+				}
+			} else {
+//				ext = get_ext_next(meta, ext);
+				ext = ((meta[ext + member_keyvalue_ext_next_offx] << 24) & 0xFF000000) |
+						   ((meta[ext + member_keyvalue_ext_next_offx + 1] << 16) & 0x00FF0000) |
+						   ((meta[ext + member_keyvalue_ext_next_offx + 2] << 8) & 0x0000FF00) |
+						   (meta[ext + member_keyvalue_ext_next_offx + 3] & 0x000000FF);
+			}
+		}
+
+		return 0;
+	}
+
 }
