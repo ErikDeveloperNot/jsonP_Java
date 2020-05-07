@@ -3,6 +3,7 @@ package net.erikdevelopernot.jsonP;
 public class Common {
 	
 	//parse options
+	public static final int DEFAULTS = 0;
 	public static final int PRESERVE_JSON = 0x1;
 	public static final int SHRINK_BUFS = PRESERVE_JSON << 1;
 	public static final int DONT_SORT_KEYS = PRESERVE_JSON << 2;
@@ -383,7 +384,7 @@ public class Common {
 	 * returns object id if found or 0 or -1 if not
 	 */
 	public static int search_keys(byte[] key, int start, int end, byte[] meta, byte[] data, 
-											boolean retPtr, boolean dontSortKeys) {
+											boolean retPtr, boolean dontSortKeys, ExtDetail extDetail) {
 	
 		int mid; // = (((end - start) / sizeof(obj_member)) / 2) * sizeof(obj_member) + start;
 //		int ext = get_ext_start(meta, end + obj_member_sz);
@@ -392,6 +393,7 @@ public class Common {
 				  ((meta[Common.member_keyvalue_offx + end + Common.member_sz + 2] << 8) & 0x0000FF00) |
 				  (meta[Common.member_keyvalue_offx + end + Common.member_sz + 3] & 0x000000FF);
 
+		int lastExt = ext;
 		
 		
 		int keyCmp;
@@ -518,10 +520,20 @@ public class Common {
 							   ((meta[ext + member_keyvalue_offx + 2] << 8) & 0x0000FF00) |
 							   (meta[ext + member_keyvalue_offx + 3] & 0x000000FF) - 1;
 				} else {
+					if (extDetail != null) {
+						extDetail.isExt = true;
+						extDetail.priorElement = lastExt;
+						extDetail.nextElement = ((meta[ext + member_keyvalue_ext_next_offx] << 24) & 0xFF000000) |
+								   ((meta[ext + member_keyvalue_ext_next_offx + 1] << 16) & 0x00FF0000) |
+								   ((meta[ext + member_keyvalue_ext_next_offx + 2] << 8) & 0x0000FF00) |
+								   (meta[ext + member_keyvalue_ext_next_offx + 3] & 0x000000FF);
+					}
+					
 					return ext;
 				}
 			} else {
 //				ext = get_ext_next(meta, ext);
+				lastExt = ext;
 				ext = ((meta[ext + member_keyvalue_ext_next_offx] << 24) & 0xFF000000) |
 						   ((meta[ext + member_keyvalue_ext_next_offx + 1] << 16) & 0x00FF0000) |
 						   ((meta[ext + member_keyvalue_ext_next_offx + 2] << 8) & 0x0000FF00) |
@@ -530,6 +542,14 @@ public class Common {
 		}
 
 		return 0;
+	}
+	
+	
+	//bad hack to deal with needing to know if an object is an ext and the prior/next ptr
+	public static class ExtDetail {
+		public boolean isExt;
+		public int priorElement;
+		public int nextElement;
 	}
 
 }

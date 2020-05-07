@@ -88,11 +88,11 @@ System.out.println("id: " + id);
 	
 	private static void testManual() {
 		try {
-			JsonPJson json = new JsonPJson(Common.object, 5, 1024, 0);
+			JsonPJson json = new JsonPJson(Common.object, 20, 1024, Common.CONVERT_NUMERICS);
 		
 			json.add_value_type(Common.string, 0, "key1", "value1");
 			json.add_value_type(Common.string, 0, "akey2", "value2");
-			json.add_value_type(Common.string, 0, "Key3", "value3");
+			int key3ID = json.add_value_type(Common.string, 0, "Key3", "value3");
 			json.add_value_type(Common.string, 0, "akey4", "value4");
 			json.add_value_type(Common.string, 0, "AKey5", "value5");
 			json.add_value_type(Common.bool_true, 0, "Bool_T", null);
@@ -101,10 +101,45 @@ System.out.println("id: " + id);
 			json.add_value_type(Common.numeric_double, 0, "nDouble", new Double(12345.9876));
 			json.add_value_type(Common.nil, 0, "nil", null);
 			
+			int objContainer = json.addContainer("Container_1", 3, 0, Common.object);
+			System.out.println("objContainer id: " + objContainer);
+			json.add_value_type(Common.string, objContainer, "abc", "value abc");
+			json.add_value_type(Common.string, objContainer, "Zee", "value Zee");
+			json.add_value_type(Common.string, objContainer, "ABC", "value ABC");
+			json.add_value_type(Common.bool_true, objContainer, "Bool_T", null);
+			json.add_value_type(Common.bool_false, objContainer, "Bool_f", null);
+			json.add_value_type(Common.numeric_long, objContainer, "Long", new Long(987654321));
+			
+			int arryContainer = json.addContainer("Array", 5, objContainer, Common.array);
+//			int arryContainer = json.addContainer("/Container_1/", "/", "Array", 5, Common.array);
+			json.add_value_type(Common.numeric_long, arryContainer, null, new Long(1));
+			json.add_value_type(Common.numeric_long, arryContainer, null, new Long(2));
+			json.add_value_type(Common.numeric_long, arryContainer, null, new Long(3));
+			json.add_value_type(Common.numeric_long, arryContainer, null, new Long(4));
+			json.add_value_type(Common.numeric_long, arryContainer, null, new Long(5));
+			
+			int embedObj = json.addContainer("/Container_1/Array", "/", null, 1, Common.object);
+//			int embedObj = json.addContainer("www", 1, arryContainer, Common.object);
+			json.add_value_type(Common.string, embedObj, "embed_key", "value");
+			int embedAry = json.addContainer("Container_1/Array", "/", null, 1, Common.array);
+			json.add_value_type(Common.string, embedAry, null, "value");
+			
+			json.add_value_type(Common.string, objContainer, "After_Array", "After");
+			
+			System.out.println(new String(json.stringify(0, true)));
+			json.deleteValue("/Container_1/Zee", "/");
+			json.deleteValue("/Container_1/Array", "/");
+			
+			int retVal = json.updateValue("/Container_1/Long", "/", Common.numeric_double, new Double(98234.234993));
+			if (retVal < 0) {
+				System.out.println("Error in updateValue: " + json.getErrorCode());
+			}
+			
+			System.out.println("update Return val: " + retVal);
 			System.out.println(new String(json.stringify(0, true)));
 			
-			int id = json.getObjectId("/Bool_f", "/");
-			System.out.println(id);
+//			int id = json.getObjectId("/Bool_f", "/");
+//			System.out.println("ID of Bool_f key: " + id);
 			
 			System.exit(1);
 		} catch (JsonPException e) {

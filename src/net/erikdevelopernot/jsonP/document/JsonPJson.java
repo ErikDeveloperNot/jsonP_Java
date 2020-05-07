@@ -3,6 +3,7 @@ package net.erikdevelopernot.jsonP.document;
 import java.util.StringTokenizer;
 
 import net.erikdevelopernot.jsonP.Common;
+import net.erikdevelopernot.jsonP.Common.ExtDetail;
 import net.erikdevelopernot.jsonP.JsonPException;
 
 
@@ -29,6 +30,12 @@ public class JsonPJson {
 	//used by private getObjectId
 	private int parentContainerID;
 	
+	//Used for searches that need access to ext information
+	private ExtDetail extDetail;
+	
+	//Used to hold status of last error
+	private ErrorCode errorCode;
+	
 	//variables used for stringify
 	private int len;
 	private int i;
@@ -48,6 +55,7 @@ public class JsonPJson {
 	
 
 	private enum TxtType { TXT, TXT_PRETTY };
+	public enum ErrorCode { ERROR, NOT_FOUND, INVALID_TYPE };
 	
 	/*
 	 * Constructors 
@@ -73,6 +81,8 @@ public class JsonPJson {
 			metaEqData = true;
 		else
 			metaEqData = false;
+		
+		extDetail = new Common.ExtDetail();
 	}
 	
 	// called by parser
@@ -105,20 +115,15 @@ public class JsonPJson {
 		metaEqData = true;
 		
 		if (type == Common.object) {
-//			*(element_type*)&data[data_i] = object;
-//			set_element_type(data, data_i, object);
 			metaData[metaIndx] = Common.object;
 		} else if(type == Common.array) {
-//			*(element_type*)&data[data_i] = array;
-//			set_element_type(data, data_i, array);
 			metaData[metaIndx] = Common.array;
 		} else {
 			throw new JsonPException("Error creating json, type must be 'object' or 'array'");
 		}
 		
 		metaIndx += Common.member_sz;
-//		*(unsigned int*)&data[data_i] = num_elements;
-//		set_uint_a_indx(data, data_i, numElements);
+
 		metaData[metaIndx] = (byte)((numElements >> 24) & 0xFF);
 		metaData[metaIndx + 1] = (byte)((numElements >> 16) & 0xFF);
 		metaData[metaIndx + 2] = (byte)((numElements >> 8) & 0xFF);
@@ -128,17 +133,11 @@ public class JsonPJson {
 		docRoot = 0;
 		
 		for (int i=0; i<numElements; i++, metaIndx += Common.member_sz) {
-//			*(element_type*)&data[data_i] = empty;
-//			set_element_type(data, data_i, empty);
 			metaData[metaIndx] = Common.empty;
 		}
 		
-//		*(element_type*)&data[data_i] = extended;
-//		set_element_type(data, data_i, extended);
 		metaData[metaIndx] = Common.extended;
 		
-//		*(unsigned int*)&data[data_i + obj_member_key_offx] = 0;
-//		set_key_offx_value(data, data_i, 0);
 		metaData[metaIndx + Common.member_keyvalue_offx] = 0;
 		metaData[metaIndx + Common.member_keyvalue_offx + 1] = 0;
 		metaData[metaIndx + Common.member_keyvalue_offx + 2] = 0;
@@ -153,6 +152,11 @@ public class JsonPJson {
 		
 		if (metaEqData)
 			dataIndx = metaIndx;
+		
+		if (convertNumberics)
+			numCvtBuf = new byte[48];
+		
+		extDetail = new Common.ExtDetail();
 	}
 	
 	
@@ -160,10 +164,130 @@ public class JsonPJson {
 	
 	
 	
-	/*
+	/*********************
 	 *  manipulate methods
+	 *********************/
+	
+	/*
+	 * Add Object ot Array Container to an existing container
+	 * 
+	 * @param path json path to add the new container into
+	 * @param delim - path delim
+	 * @param key - key name if parent container is an object, otherwise null for an array
+	 * @param elementCnt - number of elements the container will hold
+	 * @param type - Container type (object/array)
+	 * 
+	 * @returns new container id
 	 */
-//		object_id add_container(const char *, unsigned int, object_id, element_type);
+	public int addContainer(String path, String delim, String key, int elementCnt, byte type) throws JsonPException {
+		int parentId = getObjectId(path, delim);
+		
+		return addContainer(key, elementCnt, parentId, type);
+	}
+
+	/*
+	 * Add Object ot Array Container to an existing container
+	 * 
+	 * @param key - Key name if adding to an Object container, null for array parent container
+	 * @param elementCnt - number of elements the container will hold
+	 * @param parentId - parent container id
+	 * @param type - Container type (object/array)
+	 * 
+	 * @returns new container id
+	 */
+	public int addContainer(String key, int elementCnt, int parentId, byte type) throws JsonPException {
+		byte parentType = metaData[parentId];
+		
+		if (parentType != Common.object && parentType != Common.array)
+			throw new JsonPException("object_id is not an object or an array");
+		if (type != Common.object && type != Common.array)
+			throw new JsonPException("container type is not an object or array");
+			
+		if (elementCnt < 1)
+			elementCnt = 1;
+			
+		//get a key slot from the parent object
+//		int metaSlot = getMetaSlot((parentId + Common.member_sz), type);
+		int metaSlot = getMetaSlot((parentId + Common.member_sz), parentType);
+			
+		//copy the new objects keys to the data buffer if parent container is an object
+		int keyLoc = dataIndx;
+		
+		if (parentType == Common.object) {
+			byte[] keyBytes = key.getBytes();
+			increaseData(keyBytes.length + 4);
+
+			for (int i=0; i<keyBytes.length; i++)
+				data[dataIndx++] = keyBytes[i];
+			
+			data[dataIndx++] = '\0';
+			
+			if (metaEqData)
+				metaIndx = dataIndx;
+		}
+		
+		
+		//start to create the new object block and set key to the data location from previous step
+		increaseMetaData((5 + elementCnt) * Common.member_sz);
+		int idToReturn = metaIndx;
+		metaData[metaIndx++] = type;
+
+		if (parentType == Common.object) {
+			metaData[metaIndx++] = (byte)((keyLoc >>> 24) & 0xFF);
+			metaData[metaIndx++] = (byte)((keyLoc >>> 16) & 0xFF);
+			metaData[metaIndx++] = (byte)((keyLoc >>> 8) & 0xFF);
+			metaData[metaIndx++] = (byte)(keyLoc & 0xFF);
+		} else {
+			metaData[metaIndx++] = 0;
+			metaData[metaIndx++] = 0;
+			metaData[metaIndx++] = 0;
+			metaData[metaIndx++] = 0;
+		}
+		
+		//assign the parent object key a type of pointer and point to the start of the new block
+		if (type == Common.object)
+			metaData[metaSlot] = Common.object_ptr;
+		else
+			metaData[metaSlot] = Common.array_ptr;
+		
+		metaData[metaSlot+1] = (byte)(((idToReturn + 1) >>> 24) & 0xFF);
+		metaData[metaSlot+2] = (byte)(((idToReturn + 1) >>> 16) & 0xFF);
+		metaData[metaSlot+3] = (byte)(((idToReturn + 1) >>> 8) & 0xFF);
+		metaData[metaSlot+4] = (byte)((idToReturn + 1) & 0xFF);
+		
+		//set number of keys for new object or num elements for an array
+		metaData[metaIndx++] = (byte)((elementCnt >>> 24) & 0xFF);
+		metaData[metaIndx++] = (byte)((elementCnt >>> 16) & 0xFF);
+		metaData[metaIndx++] = (byte)((elementCnt >>> 8) & 0xFF);
+		metaData[metaIndx++] = (byte)(elementCnt & 0xFF);
+		
+		for (int i=0; i<elementCnt; i++, metaIndx += Common.member_sz) {
+			metaData[metaIndx] = Common.empty;
+		}
+		
+		metaData[metaIndx++] = Common.extended;
+		
+		metaData[metaIndx++] = 0;
+		metaData[metaIndx++] = 0;
+		metaData[metaIndx++] = 0;
+		metaData[metaIndx++] = 0;
+
+		if (!isExt && parentType == Common.object && !dontSortKeys) {
+			int numKeys = ((metaData[parentId + Common.member_sz] << 24) & 0xFF000000) |
+						  ((metaData[parentId + Common.member_sz + 1] << 16) & 0x00FF0000) |
+						  ((metaData[parentId + Common.member_sz + 2] << 8) & 0x0000FF00) |
+						  (metaData[parentId + Common.member_sz + 3] & 0x000000FF);
+			
+			parentId += (Common.root_sz + Common.member_sz);
+			Common.sortKeys(parentId, (parentId + (numKeys-1) * Common.member_sz), data, metaData, metaData);
+		}
+		
+		if (metaEqData)
+			dataIndx = metaIndx;
+
+		return idToReturn;
+		
+	}
 
 	
 	/*
@@ -173,8 +297,10 @@ public class JsonPJson {
 	 * @param parentId - id of the parent container
 	 * @param key - key name if parent is object, null if parent is an array
 	 * @value - element value (String, Double, Long, null)
+	 * 
+	 * returns elements id
 	 */
-	public void add_value_type(byte type, int parentId, String key, Object value) throws JsonPException {
+	public int add_value_type(byte type, int parentId, String key, Object value) throws JsonPException {
 		byte containerType = metaData[parentId];
 
 		if (containerType != Common.object && containerType != Common.array) {
@@ -201,7 +327,7 @@ public class JsonPJson {
 		} else if (type == Common.numeric_double && !convertNumberics) {
 			if (value.getClass() != Double.class)
 				throw new JsonPException("value not of type Double");
-			
+		
 			value = ((Double)value).toString().getBytes();
 			valLen = ((byte[])value).length;
 		} 
@@ -277,28 +403,196 @@ public class JsonPJson {
 		if (metaEqData)
 			metaIndx = dataIndx;
 		
-		return;
+		return metaSlot;
 	}
 
 	
 	
 	
+	/*
+	 * update an existing Non container elements values
+	 * 
+	 * @param path - json path to element
+	 * @param delim - paths delim
+	 * @param type - new elements types
+	 * @param value - Java type (String for string, Double for numeric_double, Long for Numberic_long, null for the rest)
+	 * 
+	 * returns 1=success, -1=error (sets errorCode)
+	 */
+	public int updateValue(String path, String delim, byte type, Object value) {
+		int id = getObjectId(path, delim, true, true, false);
+		
+		if (id > 0) {
+			
+			int keyLoc = ((metaData[id + Common.member_keyvalue_offx] << 24) & 0xFF000000) |
+					((metaData[id + Common.member_keyvalue_offx + 1] << 16) & 0x00FF0000) |
+					((metaData[id + Common.member_keyvalue_offx + 2] << 8) & 0x0000FF00) |
+					((metaData[id + Common.member_keyvalue_offx + 3]) & 0x000000FF);
+			
+			int valLoc = strLen(data, keyLoc) + 1 + keyLoc;
+			int valLen;
+			
+			if (metaData[id] == Common.string || ( (metaData[id] == Common.numeric_long || metaData[id] == Common.numeric_double) && !convertNumberics) ) {
+				valLen = strLen(data, valLoc);
+			} else {
+				valLen = 0;
+			}
+			
+			if (type == Common.string || ( (type == Common.numeric_long || type == Common.numeric_double) && !convertNumberics) ) {
+				byte[] bytes;
+				
+				if (value instanceof String && type == Common.string) {
+					bytes = ((String) value).getBytes();
+					metaData[id] = Common.string;
+				} else if (value instanceof Long && type == Common.numeric_long) {
+					bytes = ((Long) value).toString().getBytes();
+					metaData[id] = Common.numeric_long;
+				} else if (value instanceof Double && type == Common.numeric_double) {
+					bytes = ((Double) value).toString().getBytes();
+					metaData[id] = Common.numeric_double;
+				} else {
+					errorCode = ErrorCode.INVALID_TYPE;
+					return -1;
+				}
+
+				if (valLen >= bytes.length) {
+					//reuse space
+					for (int i=0; i<bytes.length; i++)
+						data[valLoc++] = bytes[i];
+
+					data[valLoc] = '\0';
+				} else {
+					//Copy key to new location and add value
+					increaseData(valLoc - keyLoc + bytes.length + 5);
+
+					//point to new key location
+					metaData[id + Common.member_keyvalue_offx] = (byte)(dataIndx >>> 24);
+					metaData[id + Common.member_keyvalue_offx + 1] = (byte)(dataIndx >>> 16);
+					metaData[id + Common.member_keyvalue_offx + 2] = (byte)(dataIndx >>> 8);
+					metaData[id + Common.member_keyvalue_offx + 3] = (byte)(dataIndx);
+
+					do {
+						data[dataIndx++] = data[keyLoc++];
+					} while (data[keyLoc] != '\0');
+
+					data[dataIndx++] = '\0';
+
+					for (int i=0; i<bytes.length; i++) {
+						data[dataIndx++] = bytes[i];
+					}
+
+					data[dataIndx++] = '\0';
+
+					if (metaEqData)
+						metaIndx = dataIndx;
+				}
+			} else if (type == Common.numeric_double) {
+				if (value instanceof Double) {
+					metaData[id] = Common.numeric_double;
+					long d = Double.doubleToLongBits((Double)value);
+					
+					data[valLoc++] = (byte)(0xFF & ((long)d >>> 56));
+					data[valLoc++] = (byte)(0xFF & ((long)d >>> 48));
+					data[valLoc++] = (byte)(0xFF & ((long)d >>> 40));
+					data[valLoc++] = (byte)(0xFF & ((long)d >>> 32));
+					data[valLoc++] = (byte)(0xFF & ((long)d >>> 24));
+					data[valLoc++] = (byte)(0xFF & ((long)d >>> 16));
+					data[valLoc++] = (byte)(0xFF & ((long)d >>> 8));
+					data[valLoc++] = (byte)(0xFF & (long)d);
+				} else {
+					errorCode = ErrorCode.INVALID_TYPE;
+					return -1;
+				}
+			} else if (type == Common.numeric_long) {
+				if (value instanceof Long) {
+					metaData[id] = Common.numeric_long;
+					long d = (Long)value;
+					
+					data[valLoc++] = (byte)(0xFF & ((long)d >>> 56));
+					data[valLoc++] = (byte)(0xFF & ((long)d >>> 48));
+					data[valLoc++] = (byte)(0xFF & ((long)d >>> 40));
+					data[valLoc++] = (byte)(0xFF & ((long)d >>> 32));
+					data[valLoc++] = (byte)(0xFF & ((long)d >>> 24));
+					data[valLoc++] = (byte)(0xFF & ((long)d >>> 16));
+					data[valLoc++] = (byte)(0xFF & ((long)d >>> 8));
+					data[valLoc++] = (byte)(0xFF & (long)d);
+				} else {
+					errorCode = ErrorCode.INVALID_TYPE;
+					return -1;
+				}
+			} else if (type == Common.bool_true) {
+				metaData[id] = Common.bool_true;
+			} else if (type == Common.bool_false) {
+				metaData[id] = Common.bool_false;
+			} else if (type == Common.nil) {
+				metaData[id] = Common.nil;
+			} else {
+				errorCode = ErrorCode.INVALID_TYPE;
+				return -1;
+			}
+		} else {
+			errorCode = ErrorCode.NOT_FOUND;
+			return -1;
+		}
+		
+		return 1;
+	}
+
+
 	
+	//for delete value it makes it way easier to have full path so no option for object_id for now
+	public void deleteValue(String path, String delim) throws JsonPException {
+		int id = getObjectId(path, delim, true, true, true);
+		
+		if (id > 0) {
+			if (extDetail.isExt) {
+				metaData[id] = Common.empty;
+				metaData[extDetail.priorElement + Common.member_keyvalue_ext_next_offx] = 
+						metaData[id + Common.member_keyvalue_ext_next_offx];
+				metaData[extDetail.priorElement + Common.member_keyvalue_ext_next_offx + 1] = 
+						metaData[id + Common.member_keyvalue_ext_next_offx + 1];
+				metaData[extDetail.priorElement + Common.member_keyvalue_ext_next_offx + 2] = 
+						metaData[id + Common.member_keyvalue_ext_next_offx + 2];
+				metaData[extDetail.priorElement + Common.member_keyvalue_ext_next_offx + 3] = 
+						metaData[id + Common.member_keyvalue_ext_next_offx + 3];
+			} else {
+				metaData[id] = Common.empty;
+				metaData[id+1] = 0;
+				metaData[id+2] = 0;
+				metaData[id+3] = 0;
+				metaData[id+4] = 0;
+				int numKeys = ((metaData[parentContainerID + Common.member_sz] << 24) & 0xFF000000) |
+						((metaData[parentContainerID + Common.member_sz + 1] << 16) & 0x00FF0000) |
+						((metaData[parentContainerID + Common.member_sz + 2] << 8) & 0x0000FF00) |
+						((metaData[parentContainerID + Common.member_sz + 3]) & 0x000000FF);
+
+				parentContainerID += (Common.member_sz + Common.root_sz);
+				Common.sortKeys(parentContainerID, (parentContainerID + (numKeys-1) * Common.member_sz), data, metaData, metaData);
+			}
+		} else {
+			throw new JsonPException("Element not found");
+		}
+	}
+
 	
-	
-	
-	
-	
-	
-	
-//		int update_value(object_id, index_type, element_type, void *);
-//		int update_value(search_path_element *, unsigned int, element_type, void *);
-//		int update_value(const char *, const char *, element_type, void *);
-//
-//		//for delete value it makes it way easier to have full path so no option for object_id for now
-//		int delete_value(search_path_element *, unsigned int, /*char *,*/ error*);
-//		int delete_value(const char *path, const char *delim, /*char *,*/ error *);
-//		int delete_value(object_id id, object_id parent, /*char *,*/ error *);
+	/*
+	 * potentially dangerous as data could become corrupt if an id is passed that does not point to an
+	 * element but whose meta type still equals the type byte !!!
+	 * 
+	 * Bad - when keys are sorted the id can change
+	 */
+//	public void deleteValue(int id, byte type) throws JsonPException {
+//		if (metaData[id] == type) {
+//			/*
+//			 *  as with all the the delete update operation space is lost. Assumption is a
+//			 *  json object should not be used as a datastore but rather a short term object or one
+//			 *  where edits are not made.
+//			 */
+//			metaData[id] = Common.empty;
+//		} else {
+//			throw new JsonPException("The element id passed in is not of the type specified");
+//		}
+//	}
 
 	
 	
@@ -311,15 +605,8 @@ public class JsonPJson {
 		 *  access methods
 		 */
 	
-	private int getObjectId(String path, String delim, boolean retPtr, boolean setParentId)
+	private int getObjectId(String path, String delim, boolean retPtr, boolean setParentId, boolean setExtInfo)
 	{
-//		char tok_path[strlen(path) + 1];
-//		char *tok = strtok(strcpy(tok_path, path), delim);
-//		char *next_tok = NULL;
-//		
-//		if (tok == NULL)
-//			return 0;
-		
 		StringTokenizer toker = new StringTokenizer(path, delim);
 		
 		if (toker.countTokens() < 1)
@@ -330,20 +617,18 @@ public class JsonPJson {
 	
 		int result = docRoot;
 		int start = docRoot + Common.member_sz;
-//		int numKeys = get_key_count(meta_data, start);
+
 		int numKeys = ((metaData[start] << 24) & 0xFF000000) |
 				      ((metaData[start + 1] << 16) & 0x00FF0000) |
 				      ((metaData[start + 2] << 8) & 0x0000FF00) |
 				      (metaData[start + 3] & 0x000000FF);
 		
 		start += Common.root_sz;
-//		size_t i=0;
 		byte type;
 		byte parent = metaData[docRoot];
 		boolean isArrayIndx = false;
 
 		while (tok != null) {
-//			next_tok = strtok(NULL, delim);
 			if (toker.hasMoreTokens())
 				nextTok = toker.nextToken();
 			else
@@ -364,14 +649,12 @@ public class JsonPJson {
 				}
 
 				if (indx < numKeys) {
-//					if (get_element_type(meta_data, start + (indx * obj_member_sz)) != empty)
 					if (metaData[start + (indx * Common.member_sz)] != Common.empty)
 						result = start + (indx * Common.member_sz);
 					else
 						result = 0;
 				} else {
 					// check if it is in an ext slot
-//					int extStart = get_ext_start(meta_data, start + obj_member_sz * num_keys);
 					int i = Common.member_keyvalue_offx + start + (Common.member_sz * numKeys);
 					
 					int extStart = ((metaData[i] << 24) & 0xFF000000) |
@@ -399,15 +682,25 @@ public class JsonPJson {
 			} else {
 				if (nextTok == null) {
 					if (retPtr) {
-//						result = search_keys(tok, start, (start + (num_keys * obj_member_sz) - obj_member_sz), meta_data, data, true, dont_sort_keys);
-						result = Common.search_keys(tok.getBytes(), start, (start + (numKeys * Common.member_sz) - Common.member_sz), metaData, data, true, dontSortKeys);
+						if (setExtInfo) {
+							extDetail.isExt = false;
+							result = Common.search_keys(tok.getBytes(), start, 
+									(start + (numKeys * Common.member_sz) - Common.member_sz), 
+									metaData, data, true, dontSortKeys, extDetail);
+						} else {
+							result = Common.search_keys(tok.getBytes(), start, 
+									(start + (numKeys * Common.member_sz) - Common.member_sz), 
+									metaData, data, true, dontSortKeys, null);
+						}
 					} else {
-//						result = search_keys(tok, start, (start + (num_keys * obj_member_sz) - obj_member_sz), meta_data, data, false, dont_sort_keys);
-						result = Common.search_keys(tok.getBytes(), start, (start + (numKeys * Common.member_sz) - Common.member_sz), metaData, data, false, dontSortKeys);
+						result = Common.search_keys(tok.getBytes(), start, 
+								(start + (numKeys * Common.member_sz) - Common.member_sz), 
+								metaData, data, false, dontSortKeys, null);
 					}
 				} else {
-//					result = search_keys(tok, start, (start + (num_keys * obj_member_sz) - obj_member_sz), meta_data, data, false, dont_sort_keys);
-					result = Common.search_keys(tok.getBytes(), start, (start + (numKeys * Common.member_sz) - Common.member_sz), metaData, data, false, dontSortKeys);
+					result = Common.search_keys(tok.getBytes(), start, 
+							(start + (numKeys * Common.member_sz) - Common.member_sz), 
+							metaData, data, false, dontSortKeys, null);
 				}
 			}
 			
@@ -423,7 +716,7 @@ public class JsonPJson {
 					} else {
 						start = result + Common.member_sz;
 						parent = metaData[result];
-//						num_keys = get_key_count(meta_data, start);
+
 						numKeys = ((metaData[start] << 24) & 0xFF000000) |
 								  ((metaData[start + 1] << 16) & 0x00FF0000) |
 								  ((metaData[start + 2] << 8) & 0x0000FF00) |
@@ -438,7 +731,7 @@ public class JsonPJson {
 						isArrayIndx = true;
 						parent = metaData[result];
 						start = result + Common.member_sz;
-//						num_keys = get_key_count(meta_data, start);
+
 						numKeys = ((metaData[start] << 24) & 0xFF000000) |
 								  ((metaData[start + 1] << 16) & 0x00FF0000) |
 								  ((metaData[start + 2] << 8) & 0x0000FF00) |
@@ -450,13 +743,11 @@ public class JsonPJson {
 					isArrayIndx = false;
 					
 					if (!retPtr) {
-//						result = get_key_location(meta_data, result);
 						result = ((metaData[result] << 24) & 0xFF000000) |
 								  ((metaData[result + 1] << 16) & 0x00FF0000) |
 								  ((metaData[result + 2] << 8) & 0x0000FF00) |
 								  (metaData[result + 3] & 0x000000FF);
 						
-//						result -= element_type_sz;
 						result -= 1;
 					}
 
@@ -465,7 +756,7 @@ public class JsonPJson {
 					} else {
 						parent = metaData[result];
 						start = result + Common.member_sz;
-//						numKeys = get_key_count(meta_data, start);
+
 						numKeys = ((metaData[start] << 24) & 0xFF000000) |
 								  ((metaData[start + 1] << 16) & 0x00FF0000) |
 								  ((metaData[start + 2] << 8) & 0x0000FF00) |
@@ -492,13 +783,19 @@ public class JsonPJson {
 	
 	
 	public int getObjectId(String path, String delim) {
-		return getObjectId(path, delim, false, false);
+		return getObjectId(path, delim, false, false, false);
 	}
 	
 	
 	
 	public int getDocRoot() { 
 		return docRoot; 
+	}
+	
+	
+	
+	public byte getElementType(int id) {
+		return metaData[id];
 	}
 
 		
@@ -601,8 +898,13 @@ public class JsonPJson {
 		
 		if (metaData[start + (numKeys * Common.member_sz)] == Common.extended) {
 //			std::cout << "extended 1" << std::endl;
+			int end = ((metaData[start + (numKeys * Common.member_sz) + Common.member_keyvalue_offx] << 24) & 0xFF000000) |
+					((metaData[start + (numKeys * Common.member_sz) + Common.member_keyvalue_offx + 1] << 16) & 0x00FF0000) |
+					((metaData[start + (numKeys * Common.member_sz) + Common.member_keyvalue_offx + 2] << 8) & 0x0000FF00) |
+					((metaData[start + (numKeys * Common.member_sz) + Common.member_keyvalue_offx + 3]) & 0x000000FF);
+			
 
-			if (metaData[start + (numKeys * Common.member_sz) + Common.member_keyvalue_offx] == 0) {
+			if (end == 0) {
 //				std::cout << "extended 2" << std::endl;
 				// adding first extended key/val
 //				set_key_offx_value(meta_data, start + (numKeys * obj_member_sz), *meta_i_ptr);
@@ -626,14 +928,6 @@ public class JsonPJson {
 				 return metaIndx - Common.member_ext_sz;
 			} else {
 				// follow list to end
-				int end = ((metaData[start + (numKeys * Common.member_sz) + Common.member_keyvalue_offx] << 24) & 0xFF000000) |
-						((metaData[start + (numKeys * Common.member_sz) + Common.member_keyvalue_offx + 1] << 16) & 0x00FF0000) |
-						((metaData[start + (numKeys * Common.member_sz) + Common.member_keyvalue_offx + 2] << 8) & 0x0000FF00) |
-						((metaData[start + (numKeys * Common.member_sz) + Common.member_keyvalue_offx + 3]) & 0x000000FF);
-				
-//				std::cout << "END: " << end << ", type: " << *(element_type*)&meta_data[end] << ", kloc: " <<
-//					*(object_id*)&meta_data[end + obj_member_key_offx] << ", next: " << *(object_id*)&meta_data[end + obj_member_sz] << std::endl;
-
 				int check = ((metaData[end + Common.member_sz] << 24) & 0xFF000000) |
 						  ((metaData[end + Common.member_sz + 1] << 16) & 0x00FF0000) |
 						  ((metaData[end + Common.member_sz + 2] << 8) & 0x0000FF00) |
@@ -1371,6 +1665,13 @@ public class JsonPJson {
 	}
 		
 	
+	/**
+	 * @return the errorCode
+	 */
+	public ErrorCode getErrorCode() {
+		return errorCode;
+	}
+
 	public void crap() {
 		System.out.println("Meta:\n" + new String(metaData));
 		System.out.println("Data:\n" + new String(data));
