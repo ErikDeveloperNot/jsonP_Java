@@ -74,6 +74,31 @@ public class Common {
 		0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,
 		0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0
 	};
+	
+	
+	public static String getElementType(byte forId) {
+		switch (forId)
+		{
+		case Common.string :
+			return "string";
+		case Common.numeric_double :
+			return "double";
+		case Common.numeric_long :
+			return "long";
+		case Common.bool_false :
+			return "boolean_false";
+		case Common.bool_true :
+			return "boolean_true";
+		case Common.array :
+			return "array";
+		case Common.object :
+			return "object";
+		case Common.nil :
+			return "null";
+		default:
+			return "unknown";
+		}
+	}
 
 	
 	/*
@@ -470,9 +495,8 @@ public class Common {
 
 				}
 
-//				result = std::strcmp(key, data+key_cmp);
 				result = strcmp(key, keyCmp, data);
-
+				
 				if (result == 0) {
 					//found
 					if ((type == object_ptr || type == array_ptr) && !retPtr) {

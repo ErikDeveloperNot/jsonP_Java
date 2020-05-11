@@ -222,7 +222,7 @@ public class JsonP_Parser {
 	 * Parse numeric, no conversion
 	 */
 	byte parseNumeric() throws JsonP_ParseException {
-		boolean isLong = false;
+		boolean isLong = true;
 		byte c = json[jsonIdx];
 		boolean sign = true;
 		boolean exp = false;
