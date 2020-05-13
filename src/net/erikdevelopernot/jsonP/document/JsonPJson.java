@@ -1014,7 +1014,7 @@ public class JsonPJson {
 				throw new JsonPException("No KeyEntry for id: " + i + ", number of keys: " + keys);
 			}
 			
-			return getStringValue(Common.object, idList[i]);
+			return getStringValue(metaData[parentID], idList[i]);
 		}
 		
 		
@@ -1697,13 +1697,18 @@ public class JsonPJson {
 			if (elementType == Common.string) {
 				valLen = strLen(data, keyLoc + keyLen +1);
 				
-				if (valLen + 20 > len - i || i >= len) 
-					increaseJsonBuffer(valLen + 20);
+				if (valLen + 100 > len - i || i >= len) 
+					increaseJsonBuffer(valLen + 100);
 				
 				txt[i++] = '"';
 				
-				for (int indx=0; indx<valLen; indx++)
+				for (int indx=0; indx<valLen; indx++) {
+					//TODO
+					if ((Common.parse_flags[data[keyLoc + keyLen + 1 + indx]] & 0x20) == 0x20) 				//TESTING !!!!!!!!!!
+						txt[i++] = '\\';
+					
 					txt[i++] = data[keyLoc + keyLen + 1 + indx];
+				}
 				
 				txt[i++] = '"';
 				
@@ -1963,8 +1968,12 @@ public class JsonPJson {
 				
 				txt[i++] = '"';
 				
-				for (int indx=0; indx<valLen; indx++) 
+				for (int indx=0; indx<valLen; indx++) {
+					if ((Common.parse_flags[data[valLoc + indx]] & 0x20) == 0x20) 				//TESTING !!!!!!!!!!
+						txt[i++] = '\\';
+					
 					txt[i++] = data[valLoc + indx];
+				}
 				
 				i += valLen;
 				txt[i++] = '"';

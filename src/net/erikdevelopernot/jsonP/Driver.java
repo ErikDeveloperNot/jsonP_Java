@@ -46,33 +46,41 @@ public class Driver {
 	static double doubleTotal;
 	static int nils;
 	
+	static final String bicycleCrashJson = "/Users/user1/udemy/CPP/UdemyCPP/jsonP_dyn_drvr/samples/bicycle-crash-data-chapel-hill-region.json";
+	static final String webapp2Json = "/Users/user1/udemy/CPP/UdemyCPP/jsonP_dyn_drvr/samples/webapp2.json";
+	static final String canadaJson = "/Users/user1/udemy/CPP/UdemyCPP/jsonP_dyn_drvr/samples/canada.json";
+	static final String citmJson = "/Users/user1/udemy/CPP/UdemyCPP/jsonP_dyn_drvr/samples/citm_catalog.json.txt";
+	static final String simple5Json = "/Users/user1/eclipse-workspace/jsonP_java/examples/simple5.json";
+	static final String largeJson = "/Users/user1/Downloads/large.json";
+	
 	public static void main(String[] args) throws Exception {
 		//uncomment to test manual json creation
 //		testManual();
 //		testJsonPElementAccess("/Users/user1/eclipse-workspace/jsonP_java/examples/simple5.json");
-		testJsonPElementAccess("/Users/user1/Downloads/large.json");
+//		testJsonPElementAccess("/Users/user1/Downloads/large.json");
+		testJsonPElementAccess(largeJson);
 		
 		//uncomment to test Fangiong
 //		testFangiongParser("/Users/user1/Downloads/large.json");
 //		testFangiongParser("/Users/user1/eclipse-workspace/jsonP_java/examples/simple5.json");
-				
+
+		//uncomment to test Jackson
+		testJackson(largeJson);
+
 		//uncomment to test Gson
 //		testGson("/Users/user1/Downloads/large.json");
 //		testGson("/Users/user1/eclipse-workspace/jsonP_java/examples/simple5.json");
+		testGson(largeJson);
+		System.exit(0);
 		
 //		byte[] jsonData = Files.readAllBytes(Paths.get("/Users/user1/eclipse-workspace/jsonP_java/examples/simple5.json"));
 //		byte[] jsonData = Files.readAllBytes(Paths.get("/Users/user1/Downloads/large.json"));
 //		byte[] jsonData = Files.readAllBytes(Paths.get("/Users/user1/udemy/CPP/UdemyCPP/jsonP_dyn_drvr/samples/med.json.orig"));
 		
-		
 		long s = System.currentTimeMillis();
 
 //		byte[] jsonData = getBytes("/Users/user1/Downloads/large.json");
 		byte[] jsonData = getBytes("/Users/user1/eclipse-workspace/jsonP_java/examples/simple5.json");
-
-		
-		//uncomment to test Jackson
-//		testJackson(jsonData);
 
 		
 		JsonP_Parser parser = new JsonP_Parser(jsonData, Common.DEFAULTS); //, Common.CONVERT_NUMERICS);
@@ -250,12 +258,15 @@ public class Driver {
 	}
 	
 	
-	private static void testJackson(byte[] jsonData) {
+//	private static void testJackson(byte[] jsonData) {
+	private static void testJackson(String jsonDataPath) {
 		try {
 			long s = System.currentTimeMillis();
 			
+			FileReader reader = new FileReader(jsonDataPath);
 			ObjectMapper objectMapper = new ObjectMapper();
-			JsonNode rootNode = objectMapper.readTree(jsonData);
+			JsonNode rootNode = objectMapper.readTree(reader);
+		
 
 			long f = System.currentTimeMillis();
 			
@@ -265,11 +276,109 @@ public class Driver {
 			
 			System.out.println("Jackson Parse Time: " + (f-s) + "m/s");
 			System.out.println("  Stringify time: " + (f2-f) + "m/s");
-			System.console().readLine();
+//			System.console().readLine();
+			
+			s = System.currentTimeMillis();
+
+			if (rootNode.isObject()) {
+				parseJacksonObject(rootNode);
+			} else {
+				parseJacksonArray(rootNode);
+			}
+			
+			f = System.currentTimeMillis();
+			System.out.println("Time: " + (f-s) + "m/s");
+			
+			System.out.println("Jackson stringValLength: " + stringValLength);
+			System.out.println("Jackson stringKeyLength: " + stringKeyLength);
+			System.out.println("Jackson boolT: " + boolT);
+			System.out.println("Jackson boolF: " + boolF);
+			System.out.println("Jackson longTotal: " + longTotal);
+			System.out.println("Jackson doubleTotal: " + doubleTotal);
+			System.out.println("\n");
+			resetCounters();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
+	
+	private static void parseJacksonObject(JsonNode obj) {
+		Iterator<Entry<String, JsonNode>> it = obj.fields();
+		JsonNode el;
+		Entry<String, JsonNode> e;
+		
+		while (it.hasNext()) {
+			e = it.next();
+//			System.out.print(e.getKey() + "-\n");
+			stringKeyLength += e.getKey().length();
+			el = e.getValue();
+			
+			if (el.isArray()) {
+				parseJacksonArray(el);
+			} else if (el.isObject()) {
+				parseJacksonObject(el);
+			} else if (el.isTextual()) {
+				//					System.out.print(el.getAsString() + "\n");
+				stringValLength += el.asText().length();
+//System.out.println("-" + el.asText() + "-");
+			} else if (el.isBoolean()) {
+				boolean b = el.asBoolean();
+				//					System.out.print(b);
+				if (b)
+					boolT++;
+				else
+					boolF++;
+			} else if (el.isNull()) {
+				//					System.out.print("NULL");
+				nils++;
+			} else if (el.isDouble()) {
+				//					System.out.print(el.getAsDouble());
+				doubleTotal += el.asDouble();
+			} else {
+				doubleTotal += el.asLong();
+			}
+
+//			System.out.println("\n");
+		}
+	}
+
+	private static void parseJacksonArray(JsonNode obj) {
+		Iterator<JsonNode> it = obj.iterator();
+		JsonNode el;
+		
+		while (it.hasNext()) {
+			el = it.next();
+//			System.out.print(e.getKey() + "-\n");
+			
+			if (el.isArray()) {
+				parseJacksonArray(el);
+			} else if (el.isObject()) {
+				parseJacksonObject(el);
+			} else if (el.isTextual()) {
+				//					System.out.print(el.getAsString() + "\n");
+				stringValLength += el.asText().length();
+//System.out.println("-" + el.asText() + "-");
+			} else if (el.isBoolean()) {
+				boolean b = el.asBoolean();
+				//					System.out.print(b);
+				if (b)
+					boolT++;
+				else
+					boolF++;
+			} else if (el.isNull()) {
+				//					System.out.print("NULL");
+				nils++;
+			} else if (el.isDouble()) {
+				//					System.out.print(el.getAsDouble());
+				doubleTotal += el.asDouble();
+			} else {
+				doubleTotal += el.asLong();
+			}
+
+//			System.out.println("\n");
+		}
+	}
+
 	
 	private static void testGson(String fullFileDir) {
 		try {
@@ -291,36 +400,26 @@ public class Driver {
 //			System.console().readLine();
 		
 			s = System.currentTimeMillis();
-			
-			JsonObject root = jsonElement.getAsJsonObject();
-			
-//			for (String key : rootKeys) {
-//				System.out.println(key);
-//			}
-			
-//			for (int i=0; i<1000; i++) {
-//				root.getAsJsonPrimitive("/obj_ptr_will_break/key__2/true").getAsBoolean();
-//				root.getAsJsonObject("obj_ptr_will_break").getAsJsonObject("key__2").get("true").getAsBoolean();
-			
-				
-//				Set<String> rootKeys = root.keySet();
-//				for (String key : rootKeys) {
-//					;//System.out.println(key);
-//				}
-//			}
-			parseGsonObject(root);
+
+			if (jsonElement.isJsonObject()) {
+				JsonObject root = jsonElement.getAsJsonObject();
+				parseGsonObject(root);
+			} else {
+				JsonArray root = jsonElement.getAsJsonArray();
+				parseGsonArray(root);
+			}
 			
 			f = System.currentTimeMillis();
 			System.out.println("Time: " + (f-s) + "m/s");
 			
-			System.out.println("stringValLength: " + stringValLength);
-			System.out.println("stringKeyLength: " + stringKeyLength);
-			System.out.println("boolT: " + boolT);
-			System.out.println("boolF: " + boolF);
-			System.out.println("longTotal: " + longTotal);
-			System.out.println("doubleTotal: " + doubleTotal);
-			
-			System.exit(1);
+			System.out.println("GSON stringValLength: " + stringValLength);
+			System.out.println("GSON stringKeyLength: " + stringKeyLength);
+			System.out.println("GSON boolT: " + boolT);
+			System.out.println("GSON boolF: " + boolF);
+			System.out.println("GSON longTotal: " + longTotal);
+			System.out.println("GSON doubleTotal: " + doubleTotal);
+			resetCounters();
+//			System.exit(1);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -430,16 +529,16 @@ public class Driver {
 			long s = System.currentTimeMillis();
 
 			byte[] jsonData = getBytes(json);
-			JsonP_Parser parser = new JsonP_Parser(jsonData, Common.DEFAULTS); //, Common.CONVERT_NUMERICS);
+			JsonP_Parser parser = new JsonP_Parser(jsonData, Common.CONVERT_NUMERICS); //, Common.CONVERT_NUMERICS);
 			JsonPJson jsonPJson = parser.parse();
 			
 			long f = System.currentTimeMillis();
 			
-			byte[] j = jsonPJson.stringify(0, false);
+			String str = new String(jsonPJson.stringify(0, false));
 			
 			long f2 = System.currentTimeMillis();
 			
-//			System.out.println("\n\n" + new String(j) + "\n");
+//			System.out.println("\n\n" + str + "\n");
 
 			System.out.println("Parse Time: " + (f-s) + "m/s");
 			System.out.println("Parse Stats:");
@@ -452,37 +551,11 @@ public class Driver {
 
 //			jsonPJson.addValueType(Common.string, jsonPJson.getDocRoot(), "Extended_1", "exteded 1 value");
 			
-			parseJsonPObject(jsonPJson.getDocRoot(), jsonPJson, 0);
-			
-//			KeyEntrySet keys = (KeyEntrySet) jsonPJson.getContainerElements(jsonPJson.getDocRoot());
-//			byte type;
-//			
-//			for (int i=0; i<keys.getNumberOfElements(); i++) {
-//				System.out.println(keys.getKeyName(i));
-//				type = keys.getElementType(i);
-//				
-//				if (type == Common.string) {
-//					System.out.println("  value: " + keys.getAsString(i));
-//				} else if (type == Common.bool_false) {
-//					System.out.println("  value: " + false);
-//				} else if (type == Common.bool_true) {
-//					System.out.println("  value: " + true);
-//				} else if (type == Common.array) {
-//					EntrySet es = jsonPJson.getContainerElements(keys.getAsArray(i));
-//					System.out.println("  value: array with " + es.getNumberOfElements() + " elements");
-//				} else if (type == Common.object) {
-//					KeyEntrySet ks = (KeyEntrySet) jsonPJson.getContainerElements(keys.getAsObject(i));
-//					System.out.println("  value: object with " + ks.getNumberOfElements() + " keys");
-//				} else if (type == Common.numeric_double) {
-//					System.out.println("  value: " + keys.getAsDouble(i));
-//				} else if (type == Common.numeric_long) {
-//					System.out.println("  value: " + keys.getAsLong(i));
-//				} else if (type == Common.nil) {
-//					System.out.println("  value: NULL");
-//				} else if (type == Common.array) {
-//					
-//				}
-//			}
+			if (jsonPJson.getElementType(jsonPJson.getDocRoot()) == Common.object) {
+				parseJsonPObject(jsonPJson.getDocRoot(), jsonPJson, 0);
+			} else {
+				parseJsonPArray(jsonPJson.getDocRoot(), jsonPJson, 0);
+			}
 			
 			f = System.currentTimeMillis();
 			System.out.println(" Time: " + (f-s) + "m/s");
@@ -495,9 +568,10 @@ public class Driver {
 			System.out.println("boolF: " + boolF);
 			System.out.println("longTotal: " + longTotal);
 			System.out.println("doubleTotal: " + doubleTotal);
+			System.out.println("\n");
 			resetCounters();
 			
-			System.exit(0);
+//			System.exit(0);
 		} catch (JsonP_ParseException parseE) {
 			parseE.printStackTrace();
 		} catch (JsonPException jsonE) {
@@ -508,9 +582,9 @@ public class Driver {
 	private static void parseJsonPObject(int id, JsonPJson jsonPJson, int indent) throws JsonPException {
 		KeyEntrySet keys = (KeyEntrySet) jsonPJson.getContainerElements(id);
 		byte type;
-		String indt = "";
-		for (int j=0; j<indent; j++)
-			indt += " ";
+//		String indt = "";
+//		for (int j=0; j<indent; j++)
+//			indt += " ";
 		
 		for (int i=0; i<keys.getNumberOfElements(); i++) {
 				
@@ -520,7 +594,7 @@ public class Driver {
 			
 			if (type == Common.string) {
 				stringValLength += keys.getAsString(i).length();
-//				System.out.print(keys.getAsString(i) + "\n");
+//System.out.println("-" + keys.getAsString(i) + "-");
 			} else if (type == Common.bool_false) {
 				boolF++;
 //				System.out.print("false\n");
@@ -551,9 +625,9 @@ public class Driver {
 	private static void parseJsonPArray(int id, JsonPJson jsonPJson, int indent) throws JsonPException {
 		EntrySet keys = jsonPJson.getContainerElements(id);
 		byte type;
-		String indt = "";
-		for (int j=0; j<indent; j++)
-			indt += " ";
+//		String indt = "";
+//		for (int j=0; j<indent; j++)
+//			indt += " ";
 		
 		for (int i=0; i<keys.getNumberOfElements(); i++) {
 				
@@ -561,7 +635,7 @@ public class Driver {
 			
 			if (type == Common.string) {
 				stringValLength += keys.getAsString(i).length();
-//				System.out.print(keys.getAsString(i) + ", ");
+//System.out.println("-" + keys.getAsString(i) + "-");
 			} else if (type == Common.bool_false) {
 				boolF++;
 //				System.out.print("false, ");

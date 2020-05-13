@@ -21,22 +21,19 @@ public class JsonP_Parser {
 	int valueStart;
 	
 	//stack (meta) variables
-//	private byte[][] stackBuf;    !!!!!!test without block at first
-//	private int[][] stackBufSz;
 	private byte[] stackBuf;
 	private int stackBufSz;
-//	private int stackBufHeapIdx;
 	private int stackBufIdx;
 	
 	//data (meta-data) variables
-//	private byte[][] data;
-//	private int[][] dataSz;
 	private byte[] data;
 	private int dataSz;
-//	private int dataHeapIdx;
 	private int dataIdx;
 	
-	private byte covtNumBuf[];
+	//TEST - used for parseText escaped
+	private boolean hasEscapes;
+	private int[] escapes;
+	private int escapesIdx;
 	
 	//parse stats
 	private ParseStats parseStats;
@@ -53,7 +50,7 @@ public class JsonP_Parser {
 		setOptions(options);
 		
 		if (convertNumerics) {
-			covtNumBuf = new byte[12];
+//			covtNumBuf = new byte[12];
 			
 			//converting numerics automatically means preserve json
 			preserveJson = true;
@@ -63,6 +60,10 @@ public class JsonP_Parser {
 		if (preserveJson) {
 			// preserve json data and stack are separate structures
 			dataSz = json.length / 2;
+			
+			hasEscapes = false;
+			escapes = new int[20];							//potential out of bounds Revisit
+			escapesIdx = 0;
 		} else {
 			// data and stack share structure
 			dataSz = json.length / 4;
@@ -78,6 +79,7 @@ public class JsonP_Parser {
 		jsonLen = json.length;
 		jsonIdx = 0;
 		parseStats = new ParseStats();
+		
 	}
 	
 	public JsonP_Parser(String json, int options) {
@@ -161,8 +163,27 @@ public class JsonP_Parser {
 					case '"' :
 					case '/':
 					{
+// prior do nothing escape
+//						jsonIdx += 2;
+//						break;
+	
+// new escape testing
+						if (!preserveJson) {
+							int temp = jsonIdx;
+							
+							while (temp > start) {
+								json[temp] = json[temp-1];
+								temp--;
+							}
+							 start++;
+						} else {
+							hasEscapes = true;
+							escapes[escapesIdx++] = jsonIdx;
+						}
+						
 						jsonIdx += 2;
 						break;
+						
 					}
 					case 'b' :
 					case 'f' :
@@ -193,27 +214,58 @@ public class JsonP_Parser {
 
 		if (!lookForKey) {
 			if (!preserveJson) {
-				while (start < jsonIdx)
+				while (start < jsonIdx) {
 					json[valueStart++] = json[start++];
+				}
 			} else {
 				if ((jsonIdx - start + 5 + dataIdx) > dataSz) {
 					increaseDataBuffer((int) (dataSz * 1.2 + jsonIdx - start));
 				}
-
-				while (start < jsonIdx)
-					data[dataIdx++] = json[start++];
-
-				data[dataIdx-1] = '\0';
+				
+				if (hasEscapes) {
+					escapes[escapesIdx++] = jsonIdx;
+					
+					for (int i=0; i<escapesIdx; i++) {
+						while (start < escapes[i]) 
+							data[dataIdx++] = json[start++];
+						
+						start++;
+					}
+					
+					data[dataIdx-1] = '\0';
+					hasEscapes = false;
+					escapesIdx = 0;
+				} else {
+					while (start < jsonIdx)
+						data[dataIdx++] = json[start++];
+	
+					data[dataIdx-1] = '\0';
+				}
 			}
 		} else if (preserveJson) {
 			if ((jsonIdx - start + 5 + dataIdx) > dataSz) {
 				increaseDataBuffer((int) (dataSz * 1.2 + jsonIdx - start));
 			}
 
-			while (start < jsonIdx)
-				data[dataIdx++] = json[start++];
-
-			data[dataIdx-1] = '\0';
+			if (hasEscapes) {
+				escapes[escapesIdx++] = jsonIdx;
+				
+				for (int i=0; i<escapesIdx; i++) {
+					while (start < escapes[i]) 
+						data[dataIdx++] = json[start++];
+					
+					start++;
+				}
+				
+				data[dataIdx-1] = '\0';
+				hasEscapes = false;
+				escapesIdx = 0;
+			} else {
+				while (start < jsonIdx)
+					data[dataIdx++] = json[start++];
+	
+				data[dataIdx-1] = '\0';
+			}
 		}
 	}
 	
@@ -231,7 +283,8 @@ public class JsonP_Parser {
 
 		int s = jsonIdx-1;
 
-		while (c != ' ' && c != '\t' && c != '\n' && c != '\r' && c != ',' && c != ']' && c != '}') {
+//		while (c != ' ' && c != '\t' && c != '\n' && c != '\r' && c != ',' && c != ']' && c != '}') {
+		while ((Common.parse_flags[c] & 0x40) != 0x40) {
 			if (c >= '0' && c <= '9') {
 //				zer0 = true;
 				expSign = false;
@@ -306,7 +359,8 @@ public class JsonP_Parser {
 		long expMult = 1;
 		int e = 0;
 
-		while (c != ' ' && c != '\t' && c != '\n' && c != '\r' && c != ',' && c != ']' && c != '}') {
+//		while (c != ' ' && c != '\t' && c != '\n' && c != '\r' && c != ',' && c != ']' && c != '}') {
+		while ((Common.parse_flags[c] & 0x40) != 0x40) {
 	
 			if (c >= '0' && c <= '9') {
 				expSign = false;
@@ -505,7 +559,7 @@ public class JsonP_Parser {
 		try {
 			while (keepGoing) {
 				if (stackBufSz <= stackBufIdx + 50) {
-					increaseStackBuffer(512);
+					increaseStackBuffer((int)(stackBufSz * 1.2 + 512));
 				}
 		
 				eatWhiteSpace();
@@ -535,7 +589,8 @@ public class JsonP_Parser {
 					stackBufIdx += Common.member_sz;
 	
 					if ((dataIdx + stackBufIdx - locStackIndx + Common.member_sz) >= dataSz) {
-						increaseDataBuffer((int) (dataSz * 1.2 + stackBufIdx - locStackIndx));
+//						increaseDataBuffer((int) (dataSz * 1.2 + stackBufIdx - locStackIndx));
+						increaseDataBuffer((int)(stackBufIdx - locStackIndx + Common.member_sz + dataIdx + dataSz * 1.2));
 					}
 	
 					for (int i=locStackIndx, data_i=dataIdx; i < stackBufIdx; i++, data_i++) {
@@ -671,7 +726,8 @@ public class JsonP_Parser {
 			stackBuf[stackBufIdx + 3] = 0;
 			
 			if ((stackBufIdx - locStackIndx + Common.member_sz + dataIdx) >= dataSz) {			
-				increaseDataBuffer(stackBufIdx - locStackIndx + Common.member_sz + dataIdx);
+//				increaseDataBuffer(stackBufIdx - locStackIndx + Common.member_sz + dataIdx);
+				increaseDataBuffer((int)(stackBufIdx - locStackIndx + Common.member_sz + dataIdx + dataSz * 1.2));
 			}
 
 			for (int i=locStackIndx, data_i=dataIdx; i < stackBufIdx; i++, data_i++) {
@@ -706,7 +762,7 @@ public class JsonP_Parser {
 		while (true) {
 
 			if (stackBufSz <= stackBufIdx + 50) {
-				increaseStackBuffer(512);
+				increaseStackBuffer((int)(stackBufSz * 1.2 + 512));
 			}
 
 			eatWhiteSpace();
@@ -757,7 +813,7 @@ public class JsonP_Parser {
 		stackBufIdx += Common.member_sz;
 		
 		if ((stackBufIdx - locStackIndx + Common.member_sz + dataIdx) >= dataSz) {			
-			increaseDataBuffer(stackBufIdx - locStackIndx + Common.member_sz + dataIdx);
+			increaseDataBuffer((int)(stackBufIdx - locStackIndx + Common.member_sz + dataIdx + dataSz * 1.2));
 		}
 
 		for (int i=locStackIndx, data_i=dataIdx; i < stackBufIdx; i++, data_i++) {

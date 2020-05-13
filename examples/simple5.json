@@ -4,7 +4,7 @@
 	"aaa" : "22",
 	"ccc" : [ 86234.998234, -999.1244, 78331.992, 8887264.12467124, 635124.77348],
 	"abc" : "abc",
-	"aaray" : [ "one", "two", {"key1" : "value1", "key1.5" : {}, "key2" : ["a1", ["look"]]}],
+	"aaray" : [ "one", "two", {"key1" : "value1", "key1.5" : {}, "key2" : ["a1", ["lo\"ok"]]}],
 	"zzz" : "zzz",
 	"aaa" : "aaa",
 	"BBB" : {"long1":7762342, "long2":-882364643, "long3":88823},
@@ -15,5 +15,5 @@
 	"123" : 123,
 	"obj_ptr_will_break" : { "key1": "value1", "key__2": {"true" : true, "bb" : { "rr" : [false,true]}}},
 	"QQQ" : "QQQ",
-	"JJJ" : "JJJ"
+	"JJJ" : "J\/J\/J"
 }
