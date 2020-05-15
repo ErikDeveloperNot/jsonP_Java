@@ -47,7 +47,7 @@ public class Driver {
 	static int nils;
 	
 	static final String bicycleCrashJson = "/Users/user1/udemy/CPP/UdemyCPP/jsonP_dyn_drvr/samples/bicycle-crash-data-chapel-hill-region.json";
-	static final String webapp2Json = "/Users/user1/udemy/CPP/UdemyCPP/jsonP_dyn_drvr/samples/webapp2.json";
+	static final String webappJson = "/Users/user1/udemy/CPP/UdemyCPP/jsonP_dyn_drvr/samples/webapp.json";
 	static final String canadaJson = "/Users/user1/udemy/CPP/UdemyCPP/jsonP_dyn_drvr/samples/canada.json";
 	static final String citmJson = "/Users/user1/udemy/CPP/UdemyCPP/jsonP_dyn_drvr/samples/citm_catalog.json.txt";
 	static final String simple5Json = "/Users/user1/eclipse-workspace/jsonP_java/examples/simple5.json";
@@ -58,19 +58,19 @@ public class Driver {
 //		testManual();
 //		testJsonPElementAccess("/Users/user1/eclipse-workspace/jsonP_java/examples/simple5.json");
 //		testJsonPElementAccess("/Users/user1/Downloads/large.json");
-		testJsonPElementAccess(largeJson);
+		testJsonPElementAccess(largeJson, 1);
 		
 		//uncomment to test Fangiong
 //		testFangiongParser("/Users/user1/Downloads/large.json");
 //		testFangiongParser("/Users/user1/eclipse-workspace/jsonP_java/examples/simple5.json");
 
 		//uncomment to test Jackson
-		testJackson(largeJson);
+		testJackson(largeJson,1);
 
 		//uncomment to test Gson
 //		testGson("/Users/user1/Downloads/large.json");
 //		testGson("/Users/user1/eclipse-workspace/jsonP_java/examples/simple5.json");
-		testGson(largeJson);
+		testGson(largeJson, 1);
 		System.exit(0);
 		
 //		byte[] jsonData = Files.readAllBytes(Paths.get("/Users/user1/eclipse-workspace/jsonP_java/examples/simple5.json"));
@@ -259,35 +259,50 @@ public class Driver {
 	
 	
 //	private static void testJackson(byte[] jsonData) {
-	private static void testJackson(String jsonDataPath) {
+	private static void testJackson(String jsonDataPath, int cnt) {
 		try {
-			long s = System.currentTimeMillis();
+			long pTime = 0L;
+			long sTime = 0L;
+			long wTime = 0L;
 			
-			FileReader reader = new FileReader(jsonDataPath);
-			ObjectMapper objectMapper = new ObjectMapper();
-			JsonNode rootNode = objectMapper.readTree(reader);
-		
-
-			long f = System.currentTimeMillis();
+			for (int i=0; i<cnt; i++) {
+				long s = System.currentTimeMillis();
+				
+				FileReader reader = new FileReader(jsonDataPath);
+				ObjectMapper objectMapper = new ObjectMapper();
+				JsonNode rootNode = objectMapper.readTree(reader);
 			
-			byte[] s2 = objectMapper.writeValueAsBytes(rootNode);
+	
+				long f = System.currentTimeMillis();
+				
+				byte[] s2 = objectMapper.writeValueAsBytes(rootNode);
+				
+				long f2 = System.currentTimeMillis();
+				
+//				System.out.println("Jackson Parse Time: " + (f-s) + "m/s");
+//				System.out.println("  Stringify time: " + (f2-f) + "m/s");
+//				System.console().readLine();
 			
-			long f2 = System.currentTimeMillis();
-			
-			System.out.println("Jackson Parse Time: " + (f-s) + "m/s");
-			System.out.println("  Stringify time: " + (f2-f) + "m/s");
-//			System.console().readLine();
-			
-			s = System.currentTimeMillis();
-
-			if (rootNode.isObject()) {
-				parseJacksonObject(rootNode);
-			} else {
-				parseJacksonArray(rootNode);
+				pTime += (f-s);
+				sTime += (f2-f);
+				
+				s = System.currentTimeMillis();
+	
+				if (rootNode.isObject()) {
+					parseJacksonObject(rootNode);
+				} else {
+					parseJacksonArray(rootNode);
+				}
+				
+				f = System.currentTimeMillis();
+//				System.out.println("Time: " + (f-s) + "m/s");
+				wTime += (f-s);
 			}
 			
-			f = System.currentTimeMillis();
-			System.out.println("Time: " + (f-s) + "m/s");
+			System.out.println("Jackson parse Time: " + pTime + "m/s");
+			System.out.println("Jackson stringify Time: " + sTime + "m/s");
+			System.out.println("Jackson walk Time: " + wTime + "m/s");
+			System.out.println("Jackson total Time: " + (wTime+pTime+sTime) + "m/s");
 			
 			System.out.println("Jackson stringValLength: " + stringValLength);
 			System.out.println("Jackson stringKeyLength: " + stringKeyLength);
@@ -320,7 +335,7 @@ public class Driver {
 			} else if (el.isTextual()) {
 				//					System.out.print(el.getAsString() + "\n");
 				stringValLength += el.asText().length();
-//System.out.println("-" + el.asText() + "-");
+//System.out.println("-" + el.asText() + "-" + el.asText().length());
 			} else if (el.isBoolean()) {
 				boolean b = el.asBoolean();
 				//					System.out.print(b);
@@ -380,37 +395,51 @@ public class Driver {
 	}
 
 	
-	private static void testGson(String fullFileDir) {
+	private static void testGson(String fullFileDir, int cnt) {
 		try {
-			FileReader fileReader = new FileReader(fullFileDir);
-						
-			long s = System.currentTimeMillis();
+			long pTime = 0L;
+			long sTime = 0L;
+			long wTime = 0L;
 			
-			JsonElement jsonElement = JsonParser.parseReader(fileReader);
-
-			long f = System.currentTimeMillis();
-			
-			String s2 = jsonElement.toString();
-			
-			long f2 = System.currentTimeMillis();
-			
-//			System.out.println(s2);
-			System.out.println("Google GSON Parse Time: " + (f-s) + "m/s");
-			System.out.println("  Stringify time: " + (f2-f) + "m/s");
-//			System.console().readLine();
-		
-			s = System.currentTimeMillis();
-
-			if (jsonElement.isJsonObject()) {
-				JsonObject root = jsonElement.getAsJsonObject();
-				parseGsonObject(root);
-			} else {
-				JsonArray root = jsonElement.getAsJsonArray();
-				parseGsonArray(root);
+			for (int i=0; i<cnt; i++) {
+				FileReader fileReader = new FileReader(fullFileDir);
+							
+				long s = System.currentTimeMillis();
+				
+				JsonElement jsonElement = JsonParser.parseReader(fileReader);
+	
+				long f = System.currentTimeMillis();
+				
+				String s2 = jsonElement.toString();
+				
+				long f2 = System.currentTimeMillis();
+				
+//				System.out.println(s2);
+//				System.out.println("Google GSON Parse Time: " + (f-s) + "m/s");
+//				System.out.println("  Stringify time: " + (f2-f) + "m/s");
+//				System.console().readLine();
+				pTime += (f-s);
+				sTime += (f2-f);
+				
+				s = System.currentTimeMillis();
+	
+				if (jsonElement.isJsonObject()) {
+					JsonObject root = jsonElement.getAsJsonObject();
+					parseGsonObject(root);
+				} else {
+					JsonArray root = jsonElement.getAsJsonArray();
+					parseGsonArray(root);
+				}
+				
+				f = System.currentTimeMillis();
+//				System.out.println("Time: " + (f-s) + "m/s");
+				wTime += (f-s);
 			}
 			
-			f = System.currentTimeMillis();
-			System.out.println("Time: " + (f-s) + "m/s");
+			System.out.println("GSON parse Time: " + pTime + "m/s");
+			System.out.println("GSON stringify Time: " + sTime + "m/s");
+			System.out.println("GSON walk Time: " + wTime + "m/s");
+			System.out.println("GSON total Time: " + (wTime+pTime+sTime) + "m/s");
 			
 			System.out.println("GSON stringValLength: " + stringValLength);
 			System.out.println("GSON stringKeyLength: " + stringKeyLength);
@@ -423,6 +452,7 @@ public class Driver {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+		
 	}
 	
 	private static void parseGsonObject(JsonObject obj) {
@@ -524,43 +554,60 @@ public class Driver {
 	}
 	
 	
-	private static void testJsonPElementAccess(String json) {
+	private static void testJsonPElementAccess(String json, int cnt) {
 		try {
-			long s = System.currentTimeMillis();
-
-			byte[] jsonData = getBytes(json);
-			JsonP_Parser parser = new JsonP_Parser(jsonData, Common.CONVERT_NUMERICS); //, Common.CONVERT_NUMERICS);
-			JsonPJson jsonPJson = parser.parse();
+			long pTime = 0L;
+			long sTime = 0L;
+			long wTime = 0L;
 			
-			long f = System.currentTimeMillis();
+			for (int i=0; i<cnt; i++) {
+				long s = System.currentTimeMillis();
+	
+				byte[] jsonData = getBytes(json);
+				JsonP_Parser parser = new JsonP_Parser(jsonData, Common.DONT_SORT_KEYS | Common.CONVERT_NUMERICS);
+				JsonPJson jsonPJson = parser.parse();
+				
+				long f = System.currentTimeMillis();
+				
+				String str = new String(jsonPJson.stringify(6, false));
+				
+				long f2 = System.currentTimeMillis();
+				
+//				System.out.println("\n\n" + str + "\n");
+	
+//				System.out.println("Parse Time: " + (f-s) + "m/s");
+//				System.out.println("Parse Stats:");
+//				System.out.println("  stack: " + parser.getParseStats().stackIncreases);
+//				System.out.println("  data: " + parser.getParseStats().dataIncreases);
+//				System.out.println("Stringify time: " + (f2-f) + "m/s");
+				
+				pTime += (f-s);
+				sTime += (f2-f);
+				
+				s = System.currentTimeMillis();
+	
+//				jsonPJson.addValueType(Common.string, jsonPJson.getDocRoot(), "Extended_1", "exteded 1 value");
+				
+				if (jsonPJson.getElementType(jsonPJson.getDocRoot()) == Common.object) {
+					parseJsonPObject(jsonPJson.getDocRoot(), jsonPJson, 0);
+				} else {
+					parseJsonPArray(jsonPJson.getDocRoot(), jsonPJson, 0);
+				}
+				
+				f = System.currentTimeMillis();
+	
+				wTime += (f-s);
+				
+//				System.out.println(" Time: " + (f-s) + "m/s");
+//				System.out.println(keys.getNumberOfElements());
+//				System.out.println(new String(jsonPJson.stringify(0, false)));
 			
-			String str = new String(jsonPJson.stringify(0, false));
-			
-			long f2 = System.currentTimeMillis();
-			
-//			System.out.println("\n\n" + str + "\n");
-
-			System.out.println("Parse Time: " + (f-s) + "m/s");
-			System.out.println("Parse Stats:");
-			System.out.println("  stack: " + parser.getParseStats().stackIncreases);
-			System.out.println("  data: " + parser.getParseStats().dataIncreases);
-			System.out.println("Stringify time: " + (f2-f) + "m/s");
-			
-			
-			s = System.currentTimeMillis();
-
-//			jsonPJson.addValueType(Common.string, jsonPJson.getDocRoot(), "Extended_1", "exteded 1 value");
-			
-			if (jsonPJson.getElementType(jsonPJson.getDocRoot()) == Common.object) {
-				parseJsonPObject(jsonPJson.getDocRoot(), jsonPJson, 0);
-			} else {
-				parseJsonPArray(jsonPJson.getDocRoot(), jsonPJson, 0);
 			}
 			
-			f = System.currentTimeMillis();
-			System.out.println(" Time: " + (f-s) + "m/s");
-//			System.out.println(keys.getNumberOfElements());
-//			System.out.println(new String(jsonPJson.stringify(0, false)));
+			System.out.println("JsonP parse Time: " + pTime + "m/s");
+			System.out.println("JsonP stringify Time: " + sTime + "m/s");
+			System.out.println("JsonP walk Time: " + wTime + "m/s");
+			System.out.println("JsonP total Time: " + (wTime+pTime+sTime) + "m/s");
 			
 			System.out.println("stringValLength: " + stringValLength);
 			System.out.println("stringKeyLength: " + stringKeyLength);
@@ -594,7 +641,7 @@ public class Driver {
 			
 			if (type == Common.string) {
 				stringValLength += keys.getAsString(i).length();
-//System.out.println("-" + keys.getAsString(i) + "-");
+//System.out.println("-" + keys.getAsString(i) + "-" + keys.getAsString(i).length());
 			} else if (type == Common.bool_false) {
 				boolF++;
 //				System.out.print("false\n");

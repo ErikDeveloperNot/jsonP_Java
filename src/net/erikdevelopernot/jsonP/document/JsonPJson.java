@@ -41,20 +41,15 @@ public class JsonPJson {
 	private int i;
 	private byte txt[];
 	private byte numCvtBuf[];
-	private byte numCvtBuf_i;
+	private short numCvtBuf_i;
 	private boolean pretty;
 	private int indentLength;
 	
-	//used for get_next array calls to loop through each element
-	private byte[] getNextArrayBuf;
-	private int getNextArrayIndx;
-	private int getNextArrayMemCnt;
-	private int getNextArrayId;
-	private int getNextArrayExtNext;
-	
+	private static final int DOUBLE_SIGNIFICANT = 7;
+	private static final int DEFAULT_DOUBLE_PRECISION = 8;
+	private int doublePrecision;
 	
 
-	private enum TxtType { TXT, TXT_PRETTY };
 	public enum ErrorCode { ERROR, NOT_FOUND, INVALID_TYPE };
 	
 	/*
@@ -74,7 +69,7 @@ public class JsonPJson {
 		convertNumberics = ((options & Common.CONVERT_NUMERICS) > 0) ? true : false;
 		
 		if (convertNumberics) {
-			numCvtBuf = new byte[48];
+			numCvtBuf = new byte[512];
 		}
 		
 		if (data == metaData) {
@@ -149,7 +144,7 @@ public class JsonPJson {
 
 		metaIndx += Common.member_sz;
 		
-		getNextArrayBuf = new byte[8 * 2];
+//		getNextArrayBuf = new byte[8 * 2];
 		dontSortKeys = ((options & Common.DONT_SORT_KEYS) > 0) ? true : false;
 		weakRef = ((options & Common.WEAK_REF) > 0) ? true : false;
 		convertNumberics = ((options & Common.CONVERT_NUMERICS) > 0) ? true : false;
@@ -158,7 +153,7 @@ public class JsonPJson {
 			dataIndx = metaIndx;
 		
 		if (convertNumberics)
-			numCvtBuf = new byte[48];
+			numCvtBuf = new byte[512];
 		
 		extDetail = new Common.ExtDetail();
 	}
@@ -1430,8 +1425,8 @@ public class JsonPJson {
 		
 		int sz = valLoc;
 
-		while (data[++sz] != '\0')
-			;
+		while (data[sz] != '\0')
+			sz++;
 
 		return new String(data, valLoc, sz - valLoc);
 	}
@@ -1559,19 +1554,23 @@ public class JsonPJson {
 	 * 
 	 * returns byte[]
 	 */
-	public byte[] stringify(int precisionIgnoreForNow, boolean pretty) {
+	public byte[] stringify(int precision, boolean pretty) {
 		this.pretty = pretty;
 		indentLength = 0;
-		len = dataLength/4;
+		len = dataLength/2;
 		i = 0;
 		int meta_i = docRoot + Common.member_sz;
 		txt = new byte[len];
+		
+		if (precision > 0 && precision < 18)
+			doublePrecision = precision;
+		else
+			doublePrecision = DEFAULT_DOUBLE_PRECISION;
 		
 		if (metaData[docRoot] == Common.object)
 			parseObject(meta_i);
 		else if (metaData[docRoot] == Common.array)
 			parseArray(meta_i);
-
 
 		byte[] temp = txt;
 		txt = null;
@@ -1703,8 +1702,8 @@ public class JsonPJson {
 				txt[i++] = '"';
 				
 				for (int indx=0; indx<valLen; indx++) {
-					//TODO
-					if ((Common.parse_flags[data[keyLoc + keyLen + 1 + indx]] & 0x20) == 0x20) 				//TESTING !!!!!!!!!!
+					//TODO  //TESTING !!!!!!!!!! - testing failed, issue for bytes 
+					if ((Common.parse_flags[0xFF & data[keyLoc + keyLen + 1 + indx]] & 0x20) == 0x20) 				
 						txt[i++] = '\\';
 					
 					txt[i++] = data[keyLoc + keyLen + 1 + indx];
@@ -1751,28 +1750,7 @@ public class JsonPJson {
 						
 						do {
 							modulus = remainder % 10;
-						
-							if (modulus == 0) 
-								numCvtBuf[numCvtBuf_i--] = '0';
-							else if (modulus == 1) 
-								numCvtBuf[numCvtBuf_i--] = '1';
-							else if (modulus == 2) 
-								numCvtBuf[numCvtBuf_i--] = '2';
-							else if (modulus == 3) 
-								numCvtBuf[numCvtBuf_i--] = '3';
-							else if (modulus == 4) 
-								numCvtBuf[numCvtBuf_i--] = '4';
-							else if (modulus == 5) 
-								numCvtBuf[numCvtBuf_i--] = '5';
-							else if (modulus == 6) 
-								numCvtBuf[numCvtBuf_i--] = '6';
-							else if (modulus == 7) 
-								numCvtBuf[numCvtBuf_i--] = '7';
-							else if (modulus == 8) 
-								numCvtBuf[numCvtBuf_i--] = '8';
-							else if (modulus == 9) 
-								numCvtBuf[numCvtBuf_i--] = '9';
-							
+							numCvtBuf[numCvtBuf_i--] = (byte)(48+modulus);
 							remainder = remainder / 10;
 						} while (remainder > 0);
 						
@@ -1792,13 +1770,13 @@ public class JsonPJson {
 								   		  (data[valLoc+3] & 0x000000FF)) << 32);
 						
 						
-						String doubleString = String.valueOf(Double.longBitsToDouble(doubleBits));
-						
-						for (int d=0; d<doubleString.length(); d++) {
-							txt[i++] = (byte)doubleString.charAt(d);
-//							System.out.print(doubleString.charAt(d));
-						}
-//						System.out.println();
+//						String doubleString = String.valueOf(Double.longBitsToDouble(doubleBits));
+//					
+//						for (int d=0; d<doubleString.length(); d++) {
+//							txt[i++] = (byte)doubleString.charAt(d);
+//						}
+
+						i = writeDouble(Double.longBitsToDouble(doubleBits), txt, i);
 					}
 				}
 			} else if (elementType == Common.bool) {
@@ -2014,28 +1992,7 @@ public class JsonPJson {
 						
 						do {
 							modulus = remainder % 10;
-						
-							if (modulus == 0) 
-								numCvtBuf[numCvtBuf_i--] = '0';
-							else if (modulus == 1) 
-								numCvtBuf[numCvtBuf_i--] = '1';
-							else if (modulus == 2) 
-								numCvtBuf[numCvtBuf_i--] = '2';
-							else if (modulus == 3) 
-								numCvtBuf[numCvtBuf_i--] = '3';
-							else if (modulus == 4) 
-								numCvtBuf[numCvtBuf_i--] = '4';
-							else if (modulus == 5) 
-								numCvtBuf[numCvtBuf_i--] = '5';
-							else if (modulus == 6) 
-								numCvtBuf[numCvtBuf_i--] = '6';
-							else if (modulus == 7) 
-								numCvtBuf[numCvtBuf_i--] = '7';
-							else if (modulus == 8) 
-								numCvtBuf[numCvtBuf_i--] = '8';
-							else if (modulus == 9) 
-								numCvtBuf[numCvtBuf_i--] = '9';
-							
+							numCvtBuf[numCvtBuf_i--] = (byte)(48+modulus);
 							remainder = remainder / 10;
 						} while (remainder > 0);
 						
@@ -2052,11 +2009,13 @@ public class JsonPJson {
 						   		  ((data[valLoc+2] << 8) & 0x0000FF00) |
 						   		  (data[valLoc+3] & 0x000000FF)) << 32);
 				
-						String doubleString = String.valueOf(Double.longBitsToDouble(doubleBits));
-				
-						for (int d=0; d<doubleString.length(); d++) {
-							txt[i++] = (byte)doubleString.charAt(d);
-						}
+//						String doubleString = String.valueOf(Double.longBitsToDouble(doubleBits));
+//				
+//						for (int d=0; d<doubleString.length(); d++) {
+//							txt[i++] = (byte)doubleString.charAt(d);
+//						}
+	
+						i = writeDouble(Double.longBitsToDouble(doubleBits), txt, i);
 					}
 				}
 			} else if (elementType == Common.bool) {
@@ -2130,13 +2089,13 @@ public class JsonPJson {
 	}
 
 	
-	
+
 	/*
 	 * Increase the byte buffer used for json
 	 * 
 	 * @param szToAdd - bytes to increase
 	 */
-	private void increaseJsonBuffer(int szToAdd) {
+	private void increaseJsonBuffer(int szToAdd) { long s=System.currentTimeMillis();
 		len += (szToAdd + (int)(len * 0.25));
 		byte temp[] = txt;
 		txt = new byte[len];
@@ -2197,6 +2156,90 @@ public class JsonPJson {
 				metaLength = dataLength;
 			}
 		}
+	}
+	
+	
+	
+	private int writeDouble(double num, byte[] txt, int i) { 
+		if (num < 0) {
+			txt[i++] = '-';
+			num *= -1;
+		}
+		
+		double remainder=num, modulus;
+		numCvtBuf_i = 511;
+		int e = 0;
+		int fracLeft = doublePrecision;
+		
+		if (num < 0.001) {
+			do {
+				num *= 10;
+				e--;
+			} while (num < 1);
+			
+			remainder = num;
+		}
+		
+		do {
+			modulus = remainder % 10;
+			numCvtBuf[numCvtBuf_i--] = (byte)(modulus+48);
+			remainder = remainder / 10;
+		} while (remainder >= 1);
+		
+		++numCvtBuf_i;
+		
+		if ((512 - numCvtBuf_i) > DOUBLE_SIGNIFICANT) {
+			txt[i++] = numCvtBuf[numCvtBuf_i++];
+			e = 512 - numCvtBuf_i;
+			txt[i++] = '.';
+			
+			for (int k=1; k < DOUBLE_SIGNIFICANT; k++)
+				txt[i++] = numCvtBuf[numCvtBuf_i++];
+			
+			
+			while (fracLeft-- > 0 && numCvtBuf_i < 512) 
+				txt[i++] = numCvtBuf[numCvtBuf_i++];
+				
+		} else {
+			while (numCvtBuf_i < 512)
+				txt[i++] = numCvtBuf[numCvtBuf_i++];
+			
+			txt[i++] = '.';
+		}
+		
+		remainder = num % 1;
+		
+		do { 
+			modulus = remainder / .1;
+			txt[i++] = (byte)(48 + modulus);
+			remainder = modulus % 1;
+		} while (fracLeft-- > 0);
+		
+		
+		if (e != 0) {
+			txt[i++] = 'E';
+			int mod;
+			numCvtBuf_i = 511;
+			
+			if (e < 0) {
+				txt[i++] = '-';
+				e *= -1;
+			}
+			
+			do {
+				mod = e % 10;
+				numCvtBuf[numCvtBuf_i--] = (byte)(48 + mod);
+				e = e / 10;
+			} while (e > 0);
+			
+			numCvtBuf_i++;
+			
+			while (numCvtBuf_i < 512)
+				txt[i++] = numCvtBuf[numCvtBuf_i++];
+			
+		}
+		
+		return i;
 	}
 	
 	
