@@ -47,10 +47,11 @@ public class Driver {
 	static int nils;
 	
 	static final String bicycleCrashJson = "/Users/user1/udemy/CPP/UdemyCPP/jsonP_dyn_drvr/samples/bicycle-crash-data-chapel-hill-region.json";
-	static final String webappJson = "/Users/user1/udemy/CPP/UdemyCPP/jsonP_dyn_drvr/samples/webapp.json";
+	static final String webappJson = "/Users/user1/udemy/CPP/UdemyCPP/jsonP_dyn_drvr/samples/webapp2.json";
 	static final String canadaJson = "/Users/user1/udemy/CPP/UdemyCPP/jsonP_dyn_drvr/samples/canada.json";
+	static final String sample5Json = "/Users/user1/udemy/CPP/UdemyCPP/jsonP_dyn_drvr/samples/sample5.json";
 	static final String citmJson = "/Users/user1/udemy/CPP/UdemyCPP/jsonP_dyn_drvr/samples/citm_catalog.json.txt";
-	static final String simple5Json = "/Users/user1/eclipse-workspace/jsonP_java/examples/simple5.json";
+	static final String simple5Json = "/Users/user1/eclipse-workspace/jsonP_java/examples/simple6.json";
 	static final String largeJson = "/Users/user1/Downloads/large.json";
 	
 	public static void main(String[] args) throws Exception {
@@ -65,12 +66,12 @@ public class Driver {
 //		testFangiongParser("/Users/user1/eclipse-workspace/jsonP_java/examples/simple5.json");
 
 		//uncomment to test Jackson
-		testJackson(largeJson,1);
+		testJackson(webappJson,1);
 
 		//uncomment to test Gson
 //		testGson("/Users/user1/Downloads/large.json");
 //		testGson("/Users/user1/eclipse-workspace/jsonP_java/examples/simple5.json");
-		testGson(largeJson, 1);
+		testGson(webappJson, 1);
 		System.exit(0);
 		
 //		byte[] jsonData = Files.readAllBytes(Paths.get("/Users/user1/eclipse-workspace/jsonP_java/examples/simple5.json"));
@@ -598,6 +599,46 @@ public class Driver {
 	
 				wTime += (f-s);
 				
+//				int[][] temp = parser.testMap;
+//				for (int t=0; t<temp.length; t++) {
+//					for (int r=0; r<parser.testMap_i[t]; r++)
+//						System.out.print(temp[t][r] + ",");
+//					
+//					System.out.println();
+//				}
+int highest = 0;		
+int index =0;
+for (int j=0; j<100_000; j++) {
+	if (parser.testMap[j][0] > 5) {
+		System.out.println(parser.testMap[j][0]);
+		if (parser.testMap[j][0] > highest) {
+			highest = parser.testMap[j][0];
+			index = j;
+		}
+	}
+}
+System.out.println("Highest: " + highest);
+long ls = System.currentTimeMillis();
+for (int j=0; j<highest-1; j++) {
+	if (parser.testMap[index][0] == parser.testMap[index][j%10]) {
+		System.out.println("same");
+	}
+}
+long fs = System.currentTimeMillis();
+System.out.println("Find time: " + (fs-ls));
+				
+//System.out.println("testMap2 key count: " + parser.testMap2.size());
+//Iterator<Entry<Integer, Integer>> it = parser.testMap3.entrySet().iterator();
+//while (it.hasNext()) {
+//	Entry<Integer, Integer> e = it.next();
+//	System.out.println(e.getKey() + " : " + e.getValue());
+////	if (e.getValue() > 1) {
+////		System.out.println(e.getKey() + " : " + e.getValue());
+////	}
+//}
+//				
+System.out.println("Resizes: " + parser.resizes);
+//System.out.println("key count: " + parser.keyCount);				
 //				System.out.println(" Time: " + (f-s) + "m/s");
 //				System.out.println(keys.getNumberOfElements());
 //				System.out.println(new String(jsonPJson.stringify(0, false)));
@@ -617,7 +658,7 @@ public class Driver {
 			System.out.println("doubleTotal: " + doubleTotal);
 			System.out.println("\n");
 			resetCounters();
-			
+
 //			System.exit(0);
 		} catch (JsonP_ParseException parseE) {
 			parseE.printStackTrace();

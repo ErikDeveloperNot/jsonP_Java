@@ -1,11 +1,13 @@
 package net.erikdevelopernot.jsonP.parsers;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import net.erikdevelopernot.jsonP.Common;
 import net.erikdevelopernot.jsonP.JsonP_ParseException;
 import net.erikdevelopernot.jsonP.document.JsonPJson;
 
 public class JsonP_Parser {
-	
 	//parse options
 	private boolean preserveJson = false;
 	private boolean shrinkBuffers = false;
@@ -38,7 +40,19 @@ public class JsonP_Parser {
 	//parse stats
 	private ParseStats parseStats;
 	
-	
+//public Map<Integer, Integer> testMap2 = new HashMap<>(9000000);
+//public Map<Integer, Integer> testMap3 = new HashMap<>();
+public int[][] testMap;
+public byte[][] testMapMeta;
+public int testMap_i[];
+private int hash;
+//private int hashKey;
+public int resizes;
+public int keyCount;
+byte[] path;
+int pathIndex;
+//byte[] currentKey;
+int currentKeyLength;
 	/*
 	 * Constructors
 	 */
@@ -80,6 +94,27 @@ public class JsonP_Parser {
 		jsonIdx = 0;
 		parseStats = new ParseStats();
 		
+		
+//int k = (json.length / 30) + 1;
+System.out.println("file size=" + json.length);
+if (json.length < 100000) {
+	testMap = new int[64][10];
+//	testMapMeta = new byte[64][10];
+//	testMap_i = new int[64];
+} else if (json.length < 5000000) {
+	testMap = new int[1024][10];
+//	testMapMeta = new byte[1024][10];
+//	testMap_i = new int[1024];
+} else {
+	testMap = new int[100_000][200];
+//	testMapMeta = new byte[8096][10];
+//	testMap_i = new int[8096];
+}
+path = new byte[1024];
+//path[0] = '/';
+pathIndex = 0;
+//currentKey = new byte[256];
+System.out.println("finally starting");
 	}
 	
 	public JsonP_Parser(String json, int options) {
@@ -211,6 +246,56 @@ public class JsonP_Parser {
 		}
 
 		jsonIdx++;
+		
+if (lookForKey) {
+	currentKeyLength = jsonIdx - start -1;
+//	for (int i = start; i < jsonIdx-1; i++) {
+	for (int i = 0; i < currentKeyLength; i++) {
+//		hash = 31 * hash + json[i];
+//		hash = 31 * hash + json[start + i];
+		path[pathIndex++] = json[start + i];
+    }
+//	for (int i=0; i<pathIndex; i++) {
+//		hash = 31 * hash + path[i];
+//System.out.print((char)path[i]);	
+//	}
+//System.out.println();
+//if (hash < 0)
+//	hash = (-1 * hash) % testMap.length;
+//else
+//	hash = hash % testMap.length;
+//	
+//if (testMap2.containsKey(hash)) {
+////	System.out.println("Exists");
+//	int toAdd = testMap2.get(hash);
+//	testMap2.replace(hash, ++toAdd);
+//} else {
+//	testMap2.put(hash, 1);
+//}
+	
+//	if (hash < 0)
+//		hash = (-1 * hash) % testMap.length;
+//	else
+//		hash = hash % testMap.length;
+//	
+//	System.out.println(hash/200);
+//	testMap[hashKey][testMap_i[hashKey]] = hash;
+//	testMapMeta[hashKey][testMap_i[hashKey]++] = (byte)hash;
+//	
+//	if (testMap_i[hashKey] == testMap[hashKey].length) {
+//		int[] temp = new int[testMap[hashKey].length * 2];
+//		byte[] tempMeta = new byte[temp.length];
+//		
+//		for (int k=0; k<temp.length/2; k++) {
+//			temp[k] = testMap[hashKey][k];
+//			tempMeta[k] = testMapMeta[hashKey][k];
+//		}
+//		resizes++;
+//		testMap[hashKey] = temp;
+//		testMapMeta[hashKey] = tempMeta;
+//	}
+//	keyCount++;
+}
 
 		if (!lookForKey) {
 			if (!preserveJson) {
@@ -465,7 +550,7 @@ public class JsonP_Parser {
 	private void parseValue() throws JsonP_ParseException {
 		if (json[jsonIdx] == '{') {
 			//object
-			stackBuf[stackBufIdx] = Common.object;
+			stackBuf[stackBufIdx] = Common.object_ptr;
 			stackBufIdx += Common.member_sz;
 			parseObject();
 		} else if (json[jsonIdx] == '[') {
@@ -492,7 +577,7 @@ public class JsonP_Parser {
 				throw new JsonP_ParseException("Invalid bool value found at index: " + jsonIdx);
 			}
 		} else if ((json[jsonIdx] >= '0' && json[jsonIdx] <= '9') || json[jsonIdx] == '-' || json[jsonIdx] == '+') {
-			int s = jsonIdx;
+//			int s = jsonIdx;
 			
 			switch ((convertNumerics) ? parseNumericCVT() : parseNumeric())
 			{
@@ -537,6 +622,11 @@ public class JsonP_Parser {
 		int locStackIndx = stackBufIdx;
 		int numKeys = 0;
 		int toReturn = -1;
+
+//int localHash = hash;
+//int localHashKey = hashKey;
+int localCurrentKeyLength = currentKeyLength;
+path[pathIndex++] = '/';
 		
 		stackBuf[locStackIndx] = Common.object;
 		
@@ -607,7 +697,39 @@ public class JsonP_Parser {
 							(byte)(0xff & (dataIdx + Common.member_keyvalue_offx));
 					
 					stackBuf[locStackIndx - Common.member_sz] = Common.object_ptr;
-	
+
+					
+					
+//testMap[hash][testMap_i[hash]] = dataIdx + Common.member_keyvalue_offx;
+//testMapMeta[hash][testMap_i[hash]++] = Common.object_ptr;
+//					
+//if (testMap_i[hash] == testMap[hash].length) {
+//	increaseMapBucket(hash);
+//}
+pathIndex -= 1;
+currentKeyLength = localCurrentKeyLength;
+hash=0;
+for (int i=0; i<pathIndex; i++) {
+	hash = 31 * hash + path[i];
+//	System.out.print((char)path[i]);	
+}
+if (hash < 0)
+	hash *= -1;
+testMap[hash % 100_000][0]++;
+//if (testMap2.put(hash, dataIdx) != null) {
+////	for (int i=0; i<pathIndex; i++)
+////		System.out.print((char)path[i]);
+////	
+////	System.out.println("  <-- Avalue already existed");
+//	resizes++;
+//	
+//	Integer p = testMap3.put(hash, 2);
+//	if (p != null)
+//		testMap3.put(hash, ++p);
+//}
+//System.out.println();
+			
+					
 					toReturn = dataIdx;
 					dataIdx += (stackBufIdx - locStackIndx);
 					stackBufIdx = locStackIndx - Common.member_sz;
@@ -655,6 +777,8 @@ public class JsonP_Parser {
 					parseValue();
 					stackBufIdx += Common.member_sz;
 	
+pathIndex -= currentKeyLength;
+					
 					continue;
 				} else if (json[jsonIdx] == ',') {
 					//check for comma
@@ -687,6 +811,12 @@ public class JsonP_Parser {
 		int locStackIndx = stackBufIdx;
 		int numElements = 0;
 		int toReturn;
+
+int localCurrentKeyLength = currentKeyLength;
+path[pathIndex++] = '/';
+int indexMult = 10;
+int indexNumBytes;
+
 
 		stackBuf[locStackIndx] = Common.array;
 		
@@ -745,6 +875,34 @@ public class JsonP_Parser {
 			
 			stackBuf[locStackIndx - Common.member_sz] = Common.array_ptr;
 
+			
+pathIndex -= 1;
+currentKeyLength = localCurrentKeyLength;
+hash=0;
+for (int i=0; i<pathIndex; i++) {
+	hash = 31 * hash + path[i];
+//	System.out.print((char)path[i]);	
+}
+if (hash < 0)
+	hash *= -1;
+testMap[hash % 100_000][0]++;
+
+//if (testMap2.put(hash, dataIdx) != null) {
+////	for (int i=0; i<pathIndex; i++)
+////		System.out.print((char)path[i]);
+////	
+////	System.out.println("  <-- Avalue already existed");
+//	resizes++;
+//	
+//	Integer p = testMap3.put(hash, 2);
+//	if (p != null)
+//		testMap3.put(hash, ++p);
+//}
+	
+//System.out.println();
+
+			
+			
 			toReturn = dataIdx;
 			dataIdx += (stackBufIdx - locStackIndx);
 			stackBufIdx = locStackIndx - Common.member_sz;
@@ -752,12 +910,16 @@ public class JsonP_Parser {
 			jsonIdx++;
 			return toReturn;
 		}
+	
+//for now assume less then 10
+path[pathIndex++] = '0';
 		
 		parseValue();
 		numElements++;
 		stackBufIdx += Common.member_sz;
-
 		boolean lookForValue = false;
+
+pathIndex--;
 		
 		while (true) {
 
@@ -791,10 +953,36 @@ public class JsonP_Parser {
 					lookForValue = true;
 				}
 			} else {
+//for now assume less then 10
+//path[pathIndex++] = (byte)(48 + numElements);
+indexMult = 1;
+indexNumBytes = 1;
+while (numElements >= (indexMult * 10)) {
+	indexMult *= 10;
+	indexNumBytes++;
+}
+//while (indexMult >= 10) {
+//	path[pathIndex++] = (byte)((numElements / indexMult) + 48);
+//	indexMult %= numElements / indexMult;
+//}
+int tempNumElements = numElements;
+for (int j=1; j<indexNumBytes; j++) {
+	if (indexMult > 0) {
+		path[pathIndex++] = (byte)((tempNumElements / indexMult) + 48);
+		tempNumElements %= indexMult;
+		indexMult /= 10;
+	} else {
+		path[pathIndex++] = '0';
+	}
+}
+path[pathIndex++] = (byte)((numElements % 10) + 48);
+
 				lookForValue = false;
 				parseValue();
 				numElements++;
 				stackBufIdx += Common.member_sz;
+				
+pathIndex -= indexNumBytes;
 			}
 		}
 		
@@ -831,6 +1019,31 @@ public class JsonP_Parser {
 		
 		stackBuf[locStackIndx - Common.member_sz] = Common.array_ptr;
 
+		
+pathIndex -= 1;
+currentKeyLength = localCurrentKeyLength;
+hash=0;
+for (int i=0; i<pathIndex; i++) {
+	hash = 31 * hash + path[i];
+//	System.out.print((char)path[i]);	
+}
+if (hash < 0)
+	hash *= -1;
+testMap[hash % 100_000][0]++;
+//if (testMap2.put(hash, dataIdx) != null) {
+////	for (int i=0; i<pathIndex; i++)
+////		System.out.print((char)path[i]);
+////	System.out.println("  <-- Avalue already existed");
+//	resizes++;
+//	
+//	Integer p = testMap3.put(hash, 2);
+//	if (p != null)
+//		testMap3.put(hash, ++p);
+//}
+//System.out.println();
+
+		
+		
 		toReturn = dataIdx;
 		dataIdx += (stackBufIdx - locStackIndx);
 		stackBufIdx = locStackIndx - Common.member_sz;
@@ -876,6 +1089,23 @@ public class JsonP_Parser {
 			stackBuf[i] = temp[i];
 		
 		parseStats.stackIncreases++;
+	}
+	
+	
+	/*
+	 * Increase a bucket in the Map Index
+	 */
+	private void increaseMapBucket(int bucketIndex) {
+		int[] temp = new int[testMap[bucketIndex].length * 2];
+		byte[] tempMeta = new byte[temp.length];
+							
+		for (int k=0; k<temp.length/2; k++) {
+			temp[k] = testMap[bucketIndex][k];
+			tempMeta[k] = testMapMeta[bucketIndex][k];
+		}
+		resizes++;
+		testMap[bucketIndex] = temp;
+		testMapMeta[bucketIndex] = tempMeta;
 	}
 	
 	

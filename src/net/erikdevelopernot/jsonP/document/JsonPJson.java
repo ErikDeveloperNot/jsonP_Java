@@ -977,13 +977,10 @@ public class JsonPJson {
 			
 			if (idListIndx >= idList.length) {
 				int[] temp_ints = idList;
-//				int[] temp_len = lengths;
 				idList = new int[(int)(idList.length * 1.5)];
-//				lengths = new int[idList.length];
 				
 				for (int j=0; j<idListIndx; j++) {
 					idList[j] = temp_ints[j];
-//					lengths[j] = temp_len[j];
 				}
 			}
 			
@@ -1199,22 +1196,6 @@ public class JsonPJson {
 		return entrySet;
 	}
 	
-	
-	
-	
-	
-	
-	
-	//		/*
-//		 * for the first call pass the object_id or search_path or char *path, for remaining calls pass NULL or 0 (object_id)
-//		 * when no more elements are avail and empty element_type will be returned.
-//		 * an internal buffer is used to hold the value returned. This value will be replaced
-//		 * with each call to next. The memoery alloc/dealloc of this buffer is handled by the parser
-//		 */
-//		element_type get_next_array_element(object_id, const void *&);
-//		element_type get_next_array_element(search_path_element *, unsigned int, const void *&);
-//		element_type get_next_array_element(const char *path, const char *delim, const void *&);
-//		
 	
 	
 	/*
@@ -2238,7 +2219,7 @@ public class JsonPJson {
 				txt[i++] = numCvtBuf[numCvtBuf_i++];
 			
 		}
-		
+
 		return i;
 	}
 	
