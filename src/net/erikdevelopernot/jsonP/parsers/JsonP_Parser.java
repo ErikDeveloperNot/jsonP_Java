@@ -253,7 +253,7 @@ if (lookForKey) {
 	for (int i = 0; i < currentKeyLength; i++) {
 //		hash = 31 * hash + json[i];
 //		hash = 31 * hash + json[start + i];
-		path[pathIndex++] = json[start + i];
+//		path[pathIndex++] = json[start + i];
     }
 //	for (int i=0; i<pathIndex; i++) {
 //		hash = 31 * hash + path[i];
@@ -625,8 +625,8 @@ if (lookForKey) {
 
 //int localHash = hash;
 //int localHashKey = hashKey;
-int localCurrentKeyLength = currentKeyLength;
-path[pathIndex++] = '/';
+//int localCurrentKeyLength = currentKeyLength;
+//path[pathIndex++] = '/';
 		
 		stackBuf[locStackIndx] = Common.object;
 		
@@ -707,15 +707,15 @@ path[pathIndex++] = '/';
 //	increaseMapBucket(hash);
 //}
 pathIndex -= 1;
-currentKeyLength = localCurrentKeyLength;
+//currentKeyLength = localCurrentKeyLength;
 hash=0;
 for (int i=0; i<pathIndex; i++) {
 	hash = 31 * hash + path[i];
 //	System.out.print((char)path[i]);	
 }
-if (hash < 0)
-	hash *= -1;
-testMap[hash % 100_000][0]++;
+//if (hash < 0)
+//	hash *= -1;
+//testMap[hash % 100_000][0]++;
 //if (testMap2.put(hash, dataIdx) != null) {
 ////	for (int i=0; i<pathIndex; i++)
 ////		System.out.print((char)path[i]);
@@ -813,7 +813,7 @@ pathIndex -= currentKeyLength;
 		int toReturn;
 
 int localCurrentKeyLength = currentKeyLength;
-path[pathIndex++] = '/';
+//path[pathIndex++] = '/';
 int indexMult = 10;
 int indexNumBytes;
 
@@ -883,9 +883,9 @@ for (int i=0; i<pathIndex; i++) {
 	hash = 31 * hash + path[i];
 //	System.out.print((char)path[i]);	
 }
-if (hash < 0)
-	hash *= -1;
-testMap[hash % 100_000][0]++;
+//if (hash < 0)
+//	hash *= -1;
+//testMap[hash % 100_000][0]++;
 
 //if (testMap2.put(hash, dataIdx) != null) {
 ////	for (int i=0; i<pathIndex; i++)
@@ -912,7 +912,7 @@ testMap[hash % 100_000][0]++;
 		}
 	
 //for now assume less then 10
-path[pathIndex++] = '0';
+//path[pathIndex++] = '0';
 		
 		parseValue();
 		numElements++;
@@ -966,16 +966,16 @@ while (numElements >= (indexMult * 10)) {
 //	indexMult %= numElements / indexMult;
 //}
 int tempNumElements = numElements;
-for (int j=1; j<indexNumBytes; j++) {
-	if (indexMult > 0) {
-		path[pathIndex++] = (byte)((tempNumElements / indexMult) + 48);
-		tempNumElements %= indexMult;
-		indexMult /= 10;
-	} else {
-		path[pathIndex++] = '0';
-	}
-}
-path[pathIndex++] = (byte)((numElements % 10) + 48);
+//for (int j=1; j<indexNumBytes; j++) {
+//	if (indexMult > 0) {
+//		path[pathIndex++] = (byte)((tempNumElements / indexMult) + 48);
+//		tempNumElements %= indexMult;
+//		indexMult /= 10;
+//	} else {
+//		path[pathIndex++] = '0';
+//	}
+//}
+//path[pathIndex++] = (byte)((numElements % 10) + 48);
 
 				lookForValue = false;
 				parseValue();
@@ -1027,9 +1027,9 @@ for (int i=0; i<pathIndex; i++) {
 	hash = 31 * hash + path[i];
 //	System.out.print((char)path[i]);	
 }
-if (hash < 0)
-	hash *= -1;
-testMap[hash % 100_000][0]++;
+//if (hash < 0)
+//	hash *= -1;
+//testMap[hash % 100_000][0]++;
 //if (testMap2.put(hash, dataIdx) != null) {
 ////	for (int i=0; i<pathIndex; i++)
 ////		System.out.print((char)path[i]);

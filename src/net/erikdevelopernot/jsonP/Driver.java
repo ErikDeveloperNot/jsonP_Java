@@ -556,6 +556,8 @@ public class Driver {
 	
 	
 	private static void testJsonPElementAccess(String json, int cnt) {
+		JsonPJson jsonPJson = null;
+		
 		try {
 			long pTime = 0L;
 			long sTime = 0L;
@@ -565,8 +567,8 @@ public class Driver {
 				long s = System.currentTimeMillis();
 	
 				byte[] jsonData = getBytes(json);
-				JsonP_Parser parser = new JsonP_Parser(jsonData, Common.DONT_SORT_KEYS | Common.CONVERT_NUMERICS);
-				JsonPJson jsonPJson = parser.parse();
+				JsonP_Parser parser = new JsonP_Parser(jsonData, /*Common.DONT_SORT_KEYS |*/ Common.CONVERT_NUMERICS);
+				jsonPJson = parser.parse();
 				
 				long f = System.currentTimeMillis();
 				
@@ -606,26 +608,26 @@ public class Driver {
 //					
 //					System.out.println();
 //				}
-int highest = 0;		
-int index =0;
-for (int j=0; j<100_000; j++) {
-	if (parser.testMap[j][0] > 5) {
-		System.out.println(parser.testMap[j][0]);
-		if (parser.testMap[j][0] > highest) {
-			highest = parser.testMap[j][0];
-			index = j;
-		}
-	}
-}
-System.out.println("Highest: " + highest);
-long ls = System.currentTimeMillis();
-for (int j=0; j<highest-1; j++) {
-	if (parser.testMap[index][0] == parser.testMap[index][j%10]) {
-		System.out.println("same");
-	}
-}
-long fs = System.currentTimeMillis();
-System.out.println("Find time: " + (fs-ls));
+//int highest = 0;		
+//int index =0;
+//for (int j=0; j<100_000; j++) {
+//	if (parser.testMap[j][0] > 5) {
+//		System.out.println(parser.testMap[j][0]);
+//		if (parser.testMap[j][0] > highest) {
+//			highest = parser.testMap[j][0];
+//			index = j;
+//		}
+//	}
+//}
+//System.out.println("Highest: " + highest);
+//long ls = System.currentTimeMillis();
+//for (int j=0; j<highest-1; j++) {
+//	if (parser.testMap[index][0] == parser.testMap[index][j%10]) {
+//		System.out.println("same");
+//	}
+//}
+//long fs = System.currentTimeMillis();
+//System.out.println("Find time: " + (fs-ls));
 				
 //System.out.println("testMap2 key count: " + parser.testMap2.size());
 //Iterator<Entry<Integer, Integer>> it = parser.testMap3.entrySet().iterator();
@@ -658,6 +660,16 @@ System.out.println("Resizes: " + parser.resizes);
 			System.out.println("doubleTotal: " + doubleTotal);
 			System.out.println("\n");
 			resetCounters();
+			
+String sPath = "/web-81app9/arr79/0/servlet174/0/init-param/redirectionClass";
+//String sPath = "/obj1/obj_k3/obj_inner_k3/1";
+//String sPath = "/key2/key3/3/key4";
+long s = System.currentTimeMillis();
+int id = jsonPJson.getObjectId(sPath, "/");
+long f = System.currentTimeMillis();
+System.out.println("id: " + id);// + ", value: " + jsonPJson.getStringValue(Common.object, id) + ", time: " + (f-s) + "m/s");
+System.out.println(", time: " + (f-s) + "m/s");
+
 
 //			System.exit(0);
 		} catch (JsonP_ParseException parseE) {
