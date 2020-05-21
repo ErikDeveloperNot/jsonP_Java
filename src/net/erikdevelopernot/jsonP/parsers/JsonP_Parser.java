@@ -51,7 +51,7 @@ public int resizes;
 public int keyCount;
 byte[] path;
 int pathIndex;
-//byte[] currentKey;
+byte[] currentKey;
 int currentKeyLength;
 	/*
 	 * Constructors
@@ -106,14 +106,15 @@ if (json.length < 100000) {
 //	testMapMeta = new byte[1024][10];
 //	testMap_i = new int[1024];
 } else {
-	testMap = new int[100_000][200];
+//	testMap = new int[9192][9192];
+	testMap = new int[1][1];
 //	testMapMeta = new byte[8096][10];
 //	testMap_i = new int[8096];
 }
 path = new byte[1024];
 //path[0] = '/';
 pathIndex = 0;
-//currentKey = new byte[256];
+currentKey = new byte[1024];
 System.out.println("finally starting");
 	}
 	
@@ -137,7 +138,8 @@ System.out.println("finally starting");
 		
 		eatWhiteSpace();
 
-		stackBufIdx++;
+//		stackBufIdx++;
+		stackBufIdx += 5;
 		stackBuf[stackBufIdx++] = (byte)(0xff & (0 >>> 24));
 		stackBuf[stackBufIdx++] = (byte)(0xff & (0 >>> 16));
 		stackBuf[stackBufIdx++] = (byte)(0xff & (0 >>> 8));
@@ -145,15 +147,18 @@ System.out.println("finally starting");
 
 		data[dataIdx+4] = '\0';
 		dataIdx = 5;
+		
+currentKey[0] = '/';
+currentKeyLength = 1;
 
 		int dRoot = 0; // = parseObject();
 
 		if (json[jsonIdx] == '{') {
 			stackBuf[stackBufIdx++] = Common.object;
-			dRoot = parseObject();
+			dRoot = parseObject(Common.object);
 		} else if (json[jsonIdx] == '[') {
 			stackBuf[stackBufIdx++] = Common.array;
-			dRoot = parseArray();
+			dRoot = parseArray(Common.array);
 		} else {
 			throw new JsonP_ParseException("Error parsing json text, does not appear to be an object or an array");
 		}
@@ -253,7 +258,8 @@ if (lookForKey) {
 	for (int i = 0; i < currentKeyLength; i++) {
 //		hash = 31 * hash + json[i];
 //		hash = 31 * hash + json[start + i];
-		path[pathIndex++] = json[start + i];
+//		path[pathIndex++] = json[start + i];
+		currentKey[i] = json[start + i];;
     }
 //	for (int i=0; i<pathIndex; i++) {
 //		hash = 31 * hash + path[i];
@@ -547,17 +553,25 @@ if (lookForKey) {
 	/*
 	 * called by parseObject and parseArray to parse a value type
 	 */
-	private void parseValue() throws JsonP_ParseException {
+	private void parseValue(byte parentType) throws JsonP_ParseException {
 		if (json[jsonIdx] == '{') {
 			//object
 			stackBuf[stackBufIdx] = Common.object_ptr;
-			stackBufIdx += Common.member_sz;
-			parseObject();
+if (parentType == Common.object)
+			stackBufIdx += Common.object_member_sz;
+else
+	stackBufIdx += Common.array_member_sz;
+			parseObject(parentType);
 		} else if (json[jsonIdx] == '[') {
 			//array
 			stackBuf[stackBufIdx] = Common.array_ptr;
-			stackBufIdx += Common.member_sz;
-			parseArray();
+			
+if (parentType == Common.object)
+	stackBufIdx += Common.object_member_sz;
+else
+			stackBufIdx += Common.array_member_sz;
+			
+			parseArray(parentType);
 		} else if (json[jsonIdx] == '"') {
 			//string
 			stackBuf[stackBufIdx] = Common.string;
@@ -616,26 +630,41 @@ if (lookForKey) {
 	/*
 	 * Parse a json object
 	 */
-	int parseObject() throws JsonP_ParseException {
+	private int parseObject(byte parentType) throws JsonP_ParseException {
 		
 		// create local index for this obj record and advace global index
 		int locStackIndx = stackBufIdx;
 		int numKeys = 0;
 		int toReturn = -1;
+		int parentElementSize = (parentType == Common.object) ? Common.object_member_sz : Common.array_member_sz;
+
 
 //int localHash = hash;
 //int localHashKey = hashKey;
 int localCurrentKeyLength = currentKeyLength;
-path[pathIndex++] = '/';
+//path[pathIndex++] = '/';
 		
 		stackBuf[locStackIndx] = Common.object;
 		
-		stackBuf[locStackIndx+1] = stackBuf[locStackIndx - Common.member_sz + Common.member_keyvalue_offx];
-		stackBuf[locStackIndx+2] = stackBuf[locStackIndx - Common.member_sz + Common.member_keyvalue_offx + 1];
-		stackBuf[locStackIndx+3] = stackBuf[locStackIndx - Common.member_sz + Common.member_keyvalue_offx + 2];
-		stackBuf[locStackIndx+4] = stackBuf[locStackIndx - Common.member_sz + Common.member_keyvalue_offx + 3];
+		stackBuf[locStackIndx+1] = stackBuf[locStackIndx - parentElementSize + Common.object_member_key_offx];
+		stackBuf[locStackIndx+2] = stackBuf[locStackIndx - parentElementSize + Common.object_member_key_offx + 1];
+		stackBuf[locStackIndx+3] = stackBuf[locStackIndx - parentElementSize + Common.object_member_key_offx + 2];
+		stackBuf[locStackIndx+4] = stackBuf[locStackIndx - parentElementSize + Common.object_member_key_offx + 3];
+
+
+hash=0;
+for (int i=0; i<currentKeyLength; i++) {
+	hash = 31 * hash + currentKey[i];
+//	System.out.print((char)currentKey[i]);
+}
+//System.out.print(" = " + hash + "\n\n");
+
+stackBuf[locStackIndx + Common.object_member_hash_offx] = (byte)((hash >>> 24) & 0xFF);
+stackBuf[locStackIndx + Common.object_member_hash_offx + 1] = (byte)((hash >>> 16) & 0xFF);
+stackBuf[locStackIndx + Common.object_member_hash_offx + 2] = (byte)((hash >>> 8) & 0xFF);
+stackBuf[locStackIndx + Common.object_member_hash_offx + 3] = (byte)(hash & 0xFF);
 		
-		stackBufIdx += Common.root_sz + Common.member_sz;
+		stackBufIdx += Common.root_sz + Common.object_member_sz;
 	
 		boolean keepGoing = true;
 		boolean localLookForKey = true;
@@ -657,47 +686,70 @@ path[pathIndex++] = '/';
 				//check for end object
 				if (json[jsonIdx] == '}') {
 					jsonIdx++;
-					stackBuf[locStackIndx + Common.member_sz] = (byte)(0xff & (numKeys >>> 24));
-					stackBuf[locStackIndx + Common.member_sz + 1] = (byte)(0xff & (numKeys >>> 16));
-					stackBuf[locStackIndx + Common.member_sz + 2] = (byte)(0xff & (numKeys >>> 8));
-					stackBuf[locStackIndx + Common.member_sz + 3] = (byte)(0xff & numKeys);
+					stackBuf[locStackIndx + Common.object_member_sz] = (byte)(0xff & (numKeys >>> 24));
+					stackBuf[locStackIndx + Common.object_member_sz + 1] = (byte)(0xff & (numKeys >>> 16));
+					stackBuf[locStackIndx + Common.object_member_sz + 2] = (byte)(0xff & (numKeys >>> 8));
+					stackBuf[locStackIndx + Common.object_member_sz + 3] = (byte)(0xff & numKeys);
 					
 					if (!dontSortKeys) {
-						Common.sortKeys(locStackIndx+Common.member_sz+Common.root_sz, 
-								locStackIndx+Common.member_sz+Common.root_sz+((numKeys-1)*Common.member_sz), 
-								(preserveJson) ? data : json, data, stackBuf);
+//						Common.sortKeys(locStackIndx+Common.object_member_sz+Common.root_sz, 
+//								locStackIndx+Common.object_member_sz+Common.root_sz+((numKeys-1)*Common.object_member_sz), 
+//								(preserveJson) ? data : json, data, stackBuf);
+						
+						Common.sortKeysByHash(locStackIndx+Common.object_member_sz+Common.root_sz, 
+								locStackIndx+Common.object_member_sz+Common.root_sz+((numKeys-1)*Common.object_member_sz), stackBuf);
+						
+//for (int i=locStackIndx+Common.object_member_sz+Common.root_sz; i<locStackIndx+Common.object_member_sz+Common.root_sz+((numKeys)*Common.object_member_sz); i+=Common.object_member_sz) {
+//	int hash = ((stackBuf[i + Common.object_member_hash_offx] << 24) & 0xFF000000) |
+//			((stackBuf[i + Common.object_member_hash_offx + 1] << 16) & 0x00FF0000) |
+//			((stackBuf[i + Common.object_member_hash_offx + 2] << 8) & 0x0000FF00) |
+//			((stackBuf[i + Common.object_member_hash_offx + 3]) & 0x0000FF);
+//	System.out.println(hash);
+//}
+//System.out.println();
 					}
 		
-					stackBuf[locStackIndx + Common.member_sz + Common.root_sz + (Common.member_sz * numKeys)] = Common.extended;
+					stackBuf[locStackIndx + Common.object_member_sz + Common.root_sz + (Common.object_member_sz * numKeys)] = Common.extended;
 	
-					int ls_i = locStackIndx + Common.member_sz + Common.root_sz + (Common.member_sz * numKeys) + Common.member_keyvalue_offx;
-					stackBuf[ls_i] = (byte)(0xff & (0 >>> 24));
-					stackBuf[ls_i + 1] = (byte)(0xff & (0 >>> 16));
-					stackBuf[ls_i + 2] = (byte)(0xff & (0 >>> 8));
-					stackBuf[ls_i + 3] = (byte)(0xff & 0);
+					int ls_i = locStackIndx + Common.object_member_sz + Common.root_sz + (Common.object_member_sz * numKeys) + Common.object_member_key_offx;
+					stackBuf[ls_i] = 0;
+					stackBuf[ls_i + 1] = 0;
+					stackBuf[ls_i + 2] = 0;
+					stackBuf[ls_i + 3] = 0;
 					
-					stackBufIdx += Common.member_sz;
+					stackBufIdx += Common.object_member_sz;
 	
-					if ((dataIdx + stackBufIdx - locStackIndx + Common.member_sz) >= dataSz) {
+					if ((dataIdx + stackBufIdx - locStackIndx + Common.object_member_sz) >= dataSz) {
 //						increaseDataBuffer((int) (dataSz * 1.2 + stackBufIdx - locStackIndx));
-						increaseDataBuffer((int)(stackBufIdx - locStackIndx + Common.member_sz + dataIdx + dataSz * 1.2));
+						increaseDataBuffer((int)(stackBufIdx - locStackIndx + Common.object_member_sz + dataIdx + dataSz * 1.2));
 					}
 	
 					for (int i=locStackIndx, data_i=dataIdx; i < stackBufIdx; i++, data_i++) {
 						data[data_i] = stackBuf[i];
 					}
 
-					stackBuf[locStackIndx - Common.member_sz + Common.member_keyvalue_offx] = 
-							(byte)(0xff & ((dataIdx + Common.member_keyvalue_offx) >>> 24));
-					stackBuf[locStackIndx - Common.member_sz + Common.member_keyvalue_offx + 1] = 
-							(byte)(0xff & ((dataIdx + Common.member_keyvalue_offx) >>> 16));
-					stackBuf[locStackIndx - Common.member_sz + Common.member_keyvalue_offx + 2] = 
-							(byte)(0xff & ((dataIdx + Common.member_keyvalue_offx) >>> 8));
-					stackBuf[locStackIndx - Common.member_sz + Common.member_keyvalue_offx + 3] = 
-							(byte)(0xff & (dataIdx + Common.member_keyvalue_offx));
 					
-					stackBuf[locStackIndx - Common.member_sz] = Common.object_ptr;
+					stackBuf[locStackIndx - parentElementSize + Common.object_member_key_offx] = 
+							(byte)(0xff & ((dataIdx + Common.object_member_key_offx) >>> 24));
+					stackBuf[locStackIndx - parentElementSize + Common.object_member_key_offx + 1] = 
+							(byte)(0xff & ((dataIdx + Common.object_member_key_offx) >>> 16));
+					stackBuf[locStackIndx - parentElementSize + Common.object_member_key_offx + 2] = 
+							(byte)(0xff & ((dataIdx + Common.object_member_key_offx) >>> 8));
+					stackBuf[locStackIndx - parentElementSize + Common.object_member_key_offx + 3] = 
+							(byte)(0xff & (dataIdx + Common.object_member_key_offx));
+					
+					stackBuf[locStackIndx - parentElementSize] = Common.object_ptr;
 
+if (parentType == Common.object) {
+stackBuf[locStackIndx - Common.object_member_sz + Common.object_member_hash_offx] = 
+	stackBuf[locStackIndx + Common.object_member_hash_offx];
+stackBuf[locStackIndx - Common.object_member_sz + Common.object_member_hash_offx + 1] = 
+	stackBuf[locStackIndx + Common.object_member_hash_offx + 1];
+stackBuf[locStackIndx - Common.object_member_sz + Common.object_member_hash_offx + 2] = 
+	stackBuf[locStackIndx + Common.object_member_hash_offx + 2];
+stackBuf[locStackIndx - Common.object_member_sz + Common.object_member_hash_offx + 3] = 
+	stackBuf[locStackIndx + Common.object_member_hash_offx + 3];
+}
 					
 					
 //testMap[hash][testMap_i[hash]] = dataIdx + Common.member_keyvalue_offx;
@@ -706,16 +758,19 @@ path[pathIndex++] = '/';
 //if (testMap_i[hash] == testMap[hash].length) {
 //	increaseMapBucket(hash);
 //}
-pathIndex -= 1;
-currentKeyLength = localCurrentKeyLength;
+//pathIndex -= 1;
+//currentKeyLength = localCurrentKeyLength;
 hash=0;
-for (int i=0; i<pathIndex; i++) {
-	hash = 31 * hash + path[i];
-//	System.out.print((char)path[i]);	
+for (int i=0; i<currentKeyLength; i++) {
+	hash = 31 * hash + currentKey[i];
+//	System.out.print((char)currentKey[i]);
 }
-if (hash < 0)
-	hash *= -1;
-testMap[hash % 100_000][0]++;
+//System.out.print(" = " + hash + "\n\n");
+
+//if (hash < 0)
+//	hash *= -1;
+//testMap[hash % 9192][0]++;
+
 //if (testMap2.put(hash, dataIdx) != null) {
 ////	for (int i=0; i<pathIndex; i++)
 ////		System.out.print((char)path[i]);
@@ -732,28 +787,43 @@ testMap[hash % 100_000][0]++;
 					
 					toReturn = dataIdx;
 					dataIdx += (stackBufIdx - locStackIndx);
-					stackBufIdx = locStackIndx - Common.member_sz;
-	
+//					stackBufIdx = locStackIndx - Common.object_member_sz;
+stackBufIdx = locStackIndx - parentElementSize;
+						
 					break;
 				} else if (json[jsonIdx] == '"') {
 					//check for key
 					lookForKey = true;
 					
 					if (!preserveJson) {
-						stackBuf[stackBufIdx + Common.member_keyvalue_offx] = (byte)(0xff & ((jsonIdx + 1) >>> 24));
-						stackBuf[stackBufIdx + Common.member_keyvalue_offx + 1] = (byte)(0xff & ((jsonIdx + 1) >>> 16));
-						stackBuf[stackBufIdx + Common.member_keyvalue_offx + 2] = (byte)(0xff & ((jsonIdx + 1) >>> 8));
-						stackBuf[stackBufIdx + Common.member_keyvalue_offx + 3] = (byte)(0xff & (jsonIdx + 1));
+						stackBuf[stackBufIdx + Common.object_member_key_offx] = (byte)(0xff & ((jsonIdx + 1) >>> 24));
+						stackBuf[stackBufIdx + Common.object_member_key_offx + 1] = (byte)(0xff & ((jsonIdx + 1) >>> 16));
+						stackBuf[stackBufIdx + Common.object_member_key_offx + 2] = (byte)(0xff & ((jsonIdx + 1) >>> 8));
+						stackBuf[stackBufIdx + Common.object_member_key_offx + 3] = (byte)(0xff & (jsonIdx + 1));
 					} else {
-						stackBuf[stackBufIdx + Common.member_keyvalue_offx] = (byte)(0xff & (dataIdx >>> 24));
-						stackBuf[stackBufIdx + Common.member_keyvalue_offx + 1] = (byte)(0xff & (dataIdx >>> 16));
-						stackBuf[stackBufIdx + Common.member_keyvalue_offx + 2] = (byte)(0xff & (dataIdx >>> 8));
-						stackBuf[stackBufIdx + Common.member_keyvalue_offx + 3] = (byte)(0xff & dataIdx);
+						stackBuf[stackBufIdx + Common.object_member_key_offx] = (byte)(0xff & (dataIdx >>> 24));
+						stackBuf[stackBufIdx + Common.object_member_key_offx + 1] = (byte)(0xff & (dataIdx >>> 16));
+						stackBuf[stackBufIdx + Common.object_member_key_offx + 2] = (byte)(0xff & (dataIdx >>> 8));
+						stackBuf[stackBufIdx + Common.object_member_key_offx + 3] = (byte)(0xff & dataIdx);
 					}
 						
 					numKeys ++;
 	
 					parseText();
+
+//set hash for the key just parsed
+hash=0;
+for (int i=0; i<currentKeyLength; i++) {
+	hash = 31 * hash + currentKey[i];
+//	System.out.print((char)currentKey[i]);
+}
+//System.out.print(" = " + hash + "\n\n");
+
+stackBuf[stackBufIdx + Common.object_member_hash_offx] = (byte)((hash >>> 24) & 0xFF);
+stackBuf[stackBufIdx + Common.object_member_hash_offx + 1] = (byte)((hash >>> 16) & 0xFF);
+stackBuf[stackBufIdx + Common.object_member_hash_offx + 2] = (byte)((hash >>> 8) & 0xFF);
+stackBuf[stackBufIdx + Common.object_member_hash_offx + 3] = (byte)(hash & 0xFF);
+
 	
 					lookForKey = false;
 					localLookForKey = false;
@@ -773,11 +843,11 @@ testMap[hash % 100_000][0]++;
 					}
 						
 					jsonIdx++;
-					eatWhiteSpace();;
-					parseValue();
-					stackBufIdx += Common.member_sz;
+					eatWhiteSpace();
+					parseValue(Common.object);
+					stackBufIdx += Common.object_member_sz;
 	
-pathIndex -= currentKeyLength;
+//pathIndex -= currentKeyLength;
 					
 					continue;
 				} else if (json[jsonIdx] == ',') {
@@ -806,47 +876,49 @@ pathIndex -= currentKeyLength;
 	/*
 	 * parse a json array
 	 */
-	int parseArray() throws JsonP_ParseException {
+	private int parseArray(byte parentType) throws JsonP_ParseException {
 		// create local index for this array record and advace global index
 		int locStackIndx = stackBufIdx;
 		int numElements = 0;
 		int toReturn;
+		int parentElementSize = (parentType == Common.object) ? Common.object_member_sz : Common.array_member_sz;
+
 
 int localCurrentKeyLength = currentKeyLength;
-path[pathIndex++] = '/';
+//path[pathIndex++] = '/';
 int indexMult = 10;
 int indexNumBytes;
 
 
 		stackBuf[locStackIndx] = Common.array;
 		
-		stackBuf[locStackIndx + Common.member_keyvalue_offx] = 
-				stackBuf[locStackIndx - Common.member_sz + Common.member_keyvalue_offx];
-		stackBuf[locStackIndx + Common.member_keyvalue_offx + 1] = 
-				stackBuf[locStackIndx - Common.member_sz + Common.member_keyvalue_offx + 1];
-		stackBuf[locStackIndx + Common.member_keyvalue_offx + 2] = 
-				stackBuf[locStackIndx - Common.member_sz + Common.member_keyvalue_offx + 2];
-		stackBuf[locStackIndx + Common.member_keyvalue_offx + 3] = 
-				stackBuf[locStackIndx - Common.member_sz + Common.member_keyvalue_offx + 3];
+		stackBuf[locStackIndx + Common.array_member_value_offx] = 
+				stackBuf[locStackIndx - parentElementSize + Common.array_member_value_offx];
+		stackBuf[locStackIndx + Common.array_member_value_offx + 1] = 
+				stackBuf[locStackIndx - parentElementSize + Common.array_member_value_offx + 1];
+		stackBuf[locStackIndx + Common.array_member_value_offx + 2] = 
+				stackBuf[locStackIndx - parentElementSize+ Common.array_member_value_offx + 2];
+		stackBuf[locStackIndx + Common.array_member_value_offx + 3] = 
+				stackBuf[locStackIndx - parentElementSize + Common.array_member_value_offx + 3];
 		
-		stackBufIdx += (Common.member_sz + Common.root_sz);
+		stackBufIdx += (Common.array_member_sz + Common.root_sz);
 		valueStart = jsonIdx;
 		
 		int d_i = ((preserveJson) ? dataIdx : jsonIdx);
-		stackBuf[stackBufIdx + Common.member_keyvalue_offx] = (byte)(0xff & (d_i >> 24));
-		stackBuf[stackBufIdx + Common.member_keyvalue_offx + 1] = (byte)(0xff & (d_i >> 16));
-		stackBuf[stackBufIdx + Common.member_keyvalue_offx + 2] = (byte)(0xff & (d_i >> 8));
-		stackBuf[stackBufIdx + Common.member_keyvalue_offx + 3] = (byte)(0xff & d_i);
+		stackBuf[stackBufIdx + Common.array_member_value_offx] = (byte)(0xff & (d_i >> 24));
+		stackBuf[stackBufIdx + Common.array_member_value_offx + 1] = (byte)(0xff & (d_i >> 16));
+		stackBuf[stackBufIdx + Common.array_member_value_offx + 2] = (byte)(0xff & (d_i >> 8));
+		stackBuf[stackBufIdx + Common.array_member_value_offx + 3] = (byte)(0xff & d_i);
 			
 		jsonIdx++;
 		eatWhiteSpace();
 		
 		//make sure array isn't empty
 		if (json[jsonIdx] == ']') {
-			stackBuf[locStackIndx + Common.member_sz] = (byte)(0xff & (numElements >> 24));
-			stackBuf[locStackIndx + Common.member_sz + 1] = (byte)(0xff & (numElements >> 16));
-			stackBuf[locStackIndx + Common.member_sz + 2] = (byte)(0xff & (numElements >> 8));
-			stackBuf[locStackIndx + Common.member_sz + 3] = (byte)(0xff & numElements);
+			stackBuf[locStackIndx + Common.array_member_sz] = (byte)(0xff & (numElements >> 24));
+			stackBuf[locStackIndx + Common.array_member_sz + 1] = (byte)(0xff & (numElements >> 16));
+			stackBuf[locStackIndx + Common.array_member_sz + 2] = (byte)(0xff & (numElements >> 8));
+			stackBuf[locStackIndx + Common.array_member_sz + 3] = (byte)(0xff & numElements);
 			
 			stackBuf[stackBufIdx] = Common.extended;
 			
@@ -855,37 +927,37 @@ int indexNumBytes;
 			stackBuf[stackBufIdx + 2] = 0;
 			stackBuf[stackBufIdx + 3] = 0;
 			
-			if ((stackBufIdx - locStackIndx + Common.member_sz + dataIdx) >= dataSz) {			
+			if ((stackBufIdx - locStackIndx + Common.array_member_sz + dataIdx) >= dataSz) {			
 //				increaseDataBuffer(stackBufIdx - locStackIndx + Common.member_sz + dataIdx);
-				increaseDataBuffer((int)(stackBufIdx - locStackIndx + Common.member_sz + dataIdx + dataSz * 1.2));
+				increaseDataBuffer((int)(stackBufIdx - locStackIndx + Common.array_member_sz + dataIdx + dataSz * 1.2));
 			}
 
 			for (int i=locStackIndx, data_i=dataIdx; i < stackBufIdx; i++, data_i++) {
 				data[data_i] = stackBuf[i];
 			}
 
-			stackBuf[locStackIndx - Common.member_sz + Common.member_keyvalue_offx] = 
-					(byte)(0xff & ((dataIdx + Common.member_keyvalue_offx) >> 24));
-			stackBuf[locStackIndx - Common.member_sz + Common.member_keyvalue_offx + 1] = 
-					(byte)(0xff & ((dataIdx + Common.member_keyvalue_offx) >> 16));
-			stackBuf[locStackIndx - Common.member_sz + Common.member_keyvalue_offx + 2] = 
-					(byte)(0xff & ((dataIdx + Common.member_keyvalue_offx) >> 8));
-			stackBuf[locStackIndx - Common.member_sz + Common.member_keyvalue_offx + 3] = 
-					(byte)(0xff & (dataIdx + Common.member_keyvalue_offx));
+			stackBuf[locStackIndx - parentElementSize + Common.array_member_value_offx] = 
+					(byte)(0xff & ((dataIdx + Common.array_member_value_offx) >> 24));
+			stackBuf[locStackIndx - parentElementSize + Common.array_member_value_offx + 1] = 
+					(byte)(0xff & ((dataIdx + Common.array_member_value_offx) >> 16));
+			stackBuf[locStackIndx - parentElementSize + Common.array_member_value_offx + 2] = 
+					(byte)(0xff & ((dataIdx + Common.array_member_value_offx) >> 8));
+			stackBuf[locStackIndx - parentElementSize + Common.array_member_value_offx + 3] = 
+					(byte)(0xff & (dataIdx + Common.array_member_value_offx));
 			
-			stackBuf[locStackIndx - Common.member_sz] = Common.array_ptr;
+			stackBuf[locStackIndx - parentElementSize] = Common.array_ptr;
 
 			
-pathIndex -= 1;
-currentKeyLength = localCurrentKeyLength;
-hash=0;
-for (int i=0; i<pathIndex; i++) {
-	hash = 31 * hash + path[i];
-//	System.out.print((char)path[i]);	
-}
-if (hash < 0)
-	hash *= -1;
-testMap[hash % 100_000][0]++;
+//pathIndex -= 1;
+////currentKeyLength = localCurrentKeyLength;
+//hash=0;
+//for (int i=0; i<pathIndex; i++) {
+//	hash = 31 * hash + path[i];
+////	System.out.print((char)path[i]);	
+//}
+//if (hash < 0)
+//	hash *= -1;
+//testMap[hash % 9192][0]++;
 
 //if (testMap2.put(hash, dataIdx) != null) {
 ////	for (int i=0; i<pathIndex; i++)
@@ -905,21 +977,21 @@ testMap[hash % 100_000][0]++;
 			
 			toReturn = dataIdx;
 			dataIdx += (stackBufIdx - locStackIndx);
-			stackBufIdx = locStackIndx - Common.member_sz;
-			
+//			stackBufIdx = locStackIndx - Common.array_member_sz;
+stackBufIdx = locStackIndx - parentElementSize;
 			jsonIdx++;
 			return toReturn;
 		}
 	
 //for now assume less then 10
-path[pathIndex++] = '0';
+//path[pathIndex++] = '0';
 		
-		parseValue();
+		parseValue(Common.array);
 		numElements++;
-		stackBufIdx += Common.member_sz;
+		stackBufIdx += Common.array_member_sz;
 		boolean lookForValue = false;
 
-pathIndex--;
+//pathIndex--;
 		
 		while (true) {
 
@@ -944,10 +1016,10 @@ pathIndex--;
 				} else {
 					valueStart = jsonIdx;
 					d_i = ((preserveJson) ? dataIdx : jsonIdx);
-					stackBuf[stackBufIdx + Common.member_keyvalue_offx] = (byte)(0xff & (d_i >> 24));
-					stackBuf[stackBufIdx + Common.member_keyvalue_offx + 1] = (byte)(0xff & (d_i >> 16));
-					stackBuf[stackBufIdx + Common.member_keyvalue_offx + 2] = (byte)(0xff & (d_i >> 8));
-					stackBuf[stackBufIdx + Common.member_keyvalue_offx + 3] = (byte)(0xff & d_i);
+					stackBuf[stackBufIdx + Common.array_member_value_offx] = (byte)(0xff & (d_i >> 24));
+					stackBuf[stackBufIdx + Common.array_member_value_offx + 1] = (byte)(0xff & (d_i >> 16));
+					stackBuf[stackBufIdx + Common.array_member_value_offx + 2] = (byte)(0xff & (d_i >> 8));
+					stackBuf[stackBufIdx + Common.array_member_value_offx + 3] = (byte)(0xff & d_i);
 
 					jsonIdx++;
 					lookForValue = true;
@@ -965,71 +1037,73 @@ while (numElements >= (indexMult * 10)) {
 //	path[pathIndex++] = (byte)((numElements / indexMult) + 48);
 //	indexMult %= numElements / indexMult;
 //}
-int tempNumElements = numElements;
-for (int j=1; j<indexNumBytes; j++) {
-	if (indexMult > 0) {
-		path[pathIndex++] = (byte)((tempNumElements / indexMult) + 48);
-		tempNumElements %= indexMult;
-		indexMult /= 10;
-	} else {
-		path[pathIndex++] = '0';
-	}
-}
-path[pathIndex++] = (byte)((numElements % 10) + 48);
+
+//int tempNumElements = numElements;
+//for (int j=1; j<indexNumBytes; j++) {
+//	if (indexMult > 0) {
+//		path[pathIndex++] = (byte)((tempNumElements / indexMult) + 48);
+//		tempNumElements %= indexMult;
+//		indexMult /= 10;
+//	} else {
+//		path[pathIndex++] = '0';
+//	}
+//}
+//path[pathIndex++] = (byte)((numElements % 10) + 48);
 
 				lookForValue = false;
-				parseValue();
+				parseValue(Common.array);
 				numElements++;
-				stackBufIdx += Common.member_sz;
+				stackBufIdx += Common.array_member_sz;
 				
-pathIndex -= indexNumBytes;
+//pathIndex -= indexNumBytes;
 			}
 		}
 		
-		stackBuf[locStackIndx + Common.member_sz] = (byte)(0xff & (numElements >> 24));
-		stackBuf[locStackIndx + Common.member_sz + 1] = (byte)(0xff & (numElements >> 16));
-		stackBuf[locStackIndx + Common.member_sz + 2] = (byte)(0xff & (numElements >> 8));
-		stackBuf[locStackIndx + Common.member_sz + 3] = (byte)(0xff & numElements);
+		stackBuf[locStackIndx + Common.array_member_sz] = (byte)(0xff & (numElements >> 24));
+		stackBuf[locStackIndx + Common.array_member_sz + 1] = (byte)(0xff & (numElements >> 16));
+		stackBuf[locStackIndx + Common.array_member_sz + 2] = (byte)(0xff & (numElements >> 8));
+		stackBuf[locStackIndx + Common.array_member_sz + 3] = (byte)(0xff & numElements);
 		
 		stackBuf[stackBufIdx] = Common.extended;
 		
-		stackBuf[stackBufIdx + Common.member_keyvalue_offx] = 0;
-		stackBuf[stackBufIdx + Common.member_keyvalue_offx + 1] = 0;
-		stackBuf[stackBufIdx + Common.member_keyvalue_offx + 2] = 0;
-		stackBuf[stackBufIdx + Common.member_keyvalue_offx + 3] = 0;
+		stackBuf[stackBufIdx + Common.array_member_value_offx] = 0;
+		stackBuf[stackBufIdx + Common.array_member_value_offx + 1] = 0;
+		stackBuf[stackBufIdx + Common.array_member_value_offx + 2] = 0;
+		stackBuf[stackBufIdx + Common.array_member_value_offx + 3] = 0;
 		
-		stackBufIdx += Common.member_sz;
+		stackBufIdx += Common.array_member_sz;
 		
-		if ((stackBufIdx - locStackIndx + Common.member_sz + dataIdx) >= dataSz) {			
-			increaseDataBuffer((int)(stackBufIdx - locStackIndx + Common.member_sz + dataIdx + dataSz * 1.2));
+		if ((stackBufIdx - locStackIndx + Common.array_member_sz + dataIdx) >= dataSz) {			
+			increaseDataBuffer((int)(stackBufIdx - locStackIndx + Common.array_member_sz + dataIdx + dataSz * 1.2));
 		}
 
 		for (int i=locStackIndx, data_i=dataIdx; i < stackBufIdx; i++, data_i++) {
 			data[data_i] = stackBuf[i];
 		}
 		
-		stackBuf[locStackIndx - Common.member_sz + Common.member_keyvalue_offx] = 
-				(byte)(0xff & ((dataIdx + Common.member_keyvalue_offx) >> 24));
-		stackBuf[locStackIndx - Common.member_sz + Common.member_keyvalue_offx + 1] = 
-				(byte)(0xff & ((dataIdx + Common.member_keyvalue_offx) >> 16));
-		stackBuf[locStackIndx - Common.member_sz + Common.member_keyvalue_offx + 2] = 
-				(byte)(0xff & ((dataIdx + Common.member_keyvalue_offx) >> 8));
-		stackBuf[locStackIndx - Common.member_sz + Common.member_keyvalue_offx + 3] = 
-				(byte)(0xff & (dataIdx + Common.member_keyvalue_offx));
+		stackBuf[locStackIndx - parentElementSize + Common.array_member_value_offx] = 
+				(byte)(0xff & ((dataIdx + Common.array_member_value_offx) >> 24));
+		stackBuf[locStackIndx - parentElementSize + Common.array_member_value_offx + 1] = 
+				(byte)(0xff & ((dataIdx + Common.array_member_value_offx) >> 16));
+		stackBuf[locStackIndx - parentElementSize + Common.array_member_value_offx + 2] = 
+				(byte)(0xff & ((dataIdx + Common.array_member_value_offx) >> 8));
+		stackBuf[locStackIndx - parentElementSize + Common.array_member_value_offx + 3] = 
+				(byte)(0xff & (dataIdx + Common.array_member_value_offx));
 		
-		stackBuf[locStackIndx - Common.member_sz] = Common.array_ptr;
+		stackBuf[locStackIndx - parentElementSize] = Common.array_ptr;
 
 		
-pathIndex -= 1;
-currentKeyLength = localCurrentKeyLength;
-hash=0;
-for (int i=0; i<pathIndex; i++) {
-	hash = 31 * hash + path[i];
-//	System.out.print((char)path[i]);	
-}
-if (hash < 0)
-	hash *= -1;
-testMap[hash % 100_000][0]++;
+//pathIndex -= 1;
+//currentKeyLength = localCurrentKeyLength;
+//hash=0;
+//for (int i=0; i<pathIndex; i++) {
+//	hash = 31 * hash + path[i];
+////	System.out.print((char)path[i]);	
+//}
+//if (hash < 0)
+//	hash *= -1;
+//testMap[hash % 9192][0]++;
+
 //if (testMap2.put(hash, dataIdx) != null) {
 ////	for (int i=0; i<pathIndex; i++)
 ////		System.out.print((char)path[i]);
@@ -1046,7 +1120,8 @@ testMap[hash % 100_000][0]++;
 		
 		toReturn = dataIdx;
 		dataIdx += (stackBufIdx - locStackIndx);
-		stackBufIdx = locStackIndx - Common.member_sz;
+//		stackBufIdx = locStackIndx - Common.array_member_sz;
+stackBufIdx = locStackIndx - parentElementSize;
 		
 		return toReturn;
 	}
