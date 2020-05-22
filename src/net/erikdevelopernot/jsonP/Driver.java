@@ -1,5 +1,6 @@
 package net.erikdevelopernot.jsonP;
 
+import java.io.Console;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileReader;
@@ -266,12 +267,14 @@ public class Driver {
 			long sTime = 0L;
 			long wTime = 0L;
 			
+			JsonNode rootNode = null;
+			
 			for (int i=0; i<cnt; i++) {
 				long s = System.currentTimeMillis();
 				
 				FileReader reader = new FileReader(jsonDataPath);
 				ObjectMapper objectMapper = new ObjectMapper();
-				JsonNode rootNode = objectMapper.readTree(reader);
+				rootNode = objectMapper.readTree(reader);
 			
 	
 				long f = System.currentTimeMillis();
@@ -313,6 +316,16 @@ public class Driver {
 			System.out.println("Jackson doubleTotal: " + doubleTotal);
 			System.out.println("\n");
 			resetCounters();
+			
+String sPath = "/web-81app9/arr79/0/servlet174/0/init-param/init-param/init-param/init-param/init-param/init-param/redirectionClass";
+JsonNode node = null;
+long s = System.currentTimeMillis();
+for (int i=0; i<10000; i++)
+	rootNode.get("web-81app9").get("arr79").get(0).get("servlet174").get(0).get("init-param").get("init-param").get("init-param").get("init-param").get("init-param").get("init-param").get("redirectionClass");
+//System.out.println(rootNode.findValue(sPath).asText());
+long f = System.currentTimeMillis();
+System.out.println("Time: " + (f-s) + "m/s");
+
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -557,6 +570,7 @@ public class Driver {
 	
 	private static void testJsonPElementAccess(String json, int cnt) {
 		JsonPJson jsonPJson = null;
+		JsonP_Parser parser = null;
 		
 		try {
 			long pTime = 0L;
@@ -567,12 +581,12 @@ public class Driver {
 				long s = System.currentTimeMillis();
 	
 				byte[] jsonData = getBytes(json);
-				JsonP_Parser parser = new JsonP_Parser(jsonData, /*Common.DONT_SORT_KEYS |*/ Common.CONVERT_NUMERICS);
+				parser = new JsonP_Parser(jsonData, Common.CONVERT_NUMERICS);// | Common.CONVERT_NUMERICS);
 				jsonPJson = parser.parse();
 				
 				long f = System.currentTimeMillis();
 				
-				String str = new String(jsonPJson.stringify(6, true));
+				String str = new String(jsonPJson.stringify(6, false));
 				
 				long f2 = System.currentTimeMillis();
 				
@@ -619,15 +633,15 @@ int index =0;
 //		}
 //	}
 //}
-System.out.println("Highest: " + highest);
-long ls = System.currentTimeMillis();
-for (int j=0; j<highest-1; j++) {
-	if (parser.testMap[index][0] == parser.testMap[index][j%10]) {
-//		System.out.println("same");
-	}
-}
-long fs = System.currentTimeMillis();
-System.out.println("Find time: " + (fs-ls));
+//System.out.println("Highest: " + highest);
+//long ls = System.currentTimeMillis();
+//for (int j=0; j<highest-1; j++) {
+//	if (parser.testMap[index][0] == parser.testMap[index][j%10]) {
+////		System.out.println("same");
+//	}
+//}
+//long fs = System.currentTimeMillis();
+//System.out.println("Find time: " + (fs-ls));
 				
 //System.out.println("testMap2 key count: " + parser.testMap2.size());
 //Iterator<Entry<Integer, Integer>> it = parser.testMap3.entrySet().iterator();
@@ -639,7 +653,7 @@ System.out.println("Find time: " + (fs-ls));
 ////	}
 //}
 //				
-System.out.println("Resizes: " + parser.resizes);
+//System.out.println("Resizes: " + parser.resizes);
 //System.out.println("key count: " + parser.keyCount);				
 //				System.out.println(" Time: " + (f-s) + "m/s");
 //				System.out.println(keys.getNumberOfElements());
@@ -651,7 +665,8 @@ System.out.println("Resizes: " + parser.resizes);
 			System.out.println("JsonP stringify Time: " + sTime + "m/s");
 			System.out.println("JsonP walk Time: " + wTime + "m/s");
 			System.out.println("JsonP total Time: " + (wTime+pTime+sTime) + "m/s");
-			
+			System.out.println(parser.getParseStats().getStats());
+
 			System.out.println("stringValLength: " + stringValLength);
 			System.out.println("stringKeyLength: " + stringKeyLength);
 			System.out.println("boolT: " + boolT);
@@ -660,14 +675,29 @@ System.out.println("Resizes: " + parser.resizes);
 			System.out.println("doubleTotal: " + doubleTotal);
 			System.out.println("\n");
 			resetCounters();
-			
-String sPath = "/web-81app9/arr79/0/servlet174/0/init-param/redirectionClass";
-//String sPath = "/obj1/obj_k3/obj_inner_k3/1";
-//String sPath = "/key2/key3/3/key4";
+		
+//System.gc();
+//System.console().readLine();
+String sPath = "/web-81app9/arr79/0/servlet174/0/init-param/init-param/init-param/init-param/init-param/init-param/redirectionClass";
+String sValue;
+int id=-1;
+
 long s = System.currentTimeMillis();
-int id = jsonPJson.getObjectId(sPath, "/");
+for (int i=0; i<10000; i++)
+	id = jsonPJson.getObjectId(sPath, "/");
 long f = System.currentTimeMillis();
+
+//KeyEntrySet es = (KeyEntrySet)jsonPJson.getContainerElements(id);
+//for (int i=0; i<es.getNumberOfElements(); i++) {
+//	System.out.println("Type: " + Common.getElementType(es.getElementType(i)) + ", Key name: " + es.getKeyName(i) +
+//			", id: " + es.getAsArray(i));
+//}
+
 System.out.println("id: " + id + ", value: " + jsonPJson.getStringValue(Common.object, id) + ", time: " + (f-s) + "m/s");
+//System.out.println("Value: " + sValue + ", time: " + (f-s) + "m/s");
+
+//id = jsonPJson.getObjectId("/web-81app9/arr79", "/");
+//System.out.println("id: " + id);
 
 //			System.exit(0);
 		} catch (JsonP_ParseException parseE) {

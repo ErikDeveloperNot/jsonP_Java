@@ -783,9 +783,11 @@ metaData[metaSlot + Common.object_member_hash_offx + 3] = (byte)(hash & 0xFF);
 				}
 			}
 			
-			type = metaData[result];
+//			type = metaData[result];
 			
 			if (result > 0) {
+			
+				type = metaData[result];
 				
 				if (type ==  Common.object) { // && i < path_count) {
 					

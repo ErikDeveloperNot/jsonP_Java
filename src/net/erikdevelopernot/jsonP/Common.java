@@ -237,15 +237,15 @@ public class Common {
 			  	 	  	  ((meta[lowPtr + 1] << 16) & 0x00FF0000) |
 				 	  	  ((meta[lowPtr + 2] << 8) & 0x0000FF00) |
 		  		 	  	  (meta[lowPtr + 3] & 0x000000FF);
-System.out.println("PTR hash: " + (((stackBuf[low + object_member_hash_offx] << 24) & 0xFF000000) |
-		  	 	  	  ((stackBuf[low + object_member_hash_offx + 1] << 16) & 0x00FF0000) |
-			 	  	  ((stackBuf[low + object_member_hash_offx + 2] << 8) & 0x0000FF00) |
-	  		 	  	  (stackBuf[low + object_member_hash_offx + 3] & 0x000000FF)));
-System.out.println("REL hash: " + (((meta[lowPtr+4] << 24) & 0xFF000000) |
-			  	 	  	  ((meta[lowPtr + 5] << 16) & 0x00FF0000) |
-				 	  	  ((meta[lowPtr + 6] << 8) & 0x0000FF00) |
-		  		 	  	  (meta[lowPtr + 7] & 0x000000FF)));
-System.out.println();
+//System.out.println("PTR hash: " + (((stackBuf[low + object_member_hash_offx] << 24) & 0xFF000000) |
+//		  	 	  	  ((stackBuf[low + object_member_hash_offx + 1] << 16) & 0x00FF0000) |
+//			 	  	  ((stackBuf[low + object_member_hash_offx + 2] << 8) & 0x0000FF00) |
+//	  		 	  	  (stackBuf[low + object_member_hash_offx + 3] & 0x000000FF)));
+//System.out.println("REL hash: " + (((meta[lowPtr+4] << 24) & 0xFF000000) |
+//			  	 	  	  ((meta[lowPtr + 5] << 16) & 0x00FF0000) |
+//				 	  	  ((meta[lowPtr + 6] << 8) & 0x0000FF00) |
+//		  		 	  	  (meta[lowPtr + 7] & 0x000000FF)));
+//System.out.println();
 			}
 			
 			if (stackBuf[high] == Common.object_ptr || stackBuf[high] == Common.array_ptr) {
@@ -708,10 +708,10 @@ System.out.println();
 					if ((type == object_ptr || type == array_ptr) && !retPtr) {
 						//return get_key_location(meta, mid + obj_member_key_offx) - element_type_sz;
 //						return get_key_location(meta, mid) - element_type_sz;
-						return ((meta[mid + object_member_key_offx] << 24) & 0xFF000000) |
+						return (((meta[mid + object_member_key_offx] << 24) & 0xFF000000) |
 							   ((meta[mid + object_member_key_offx + 1] << 16) & 0x00FF0000) |
 							   ((meta[mid + object_member_key_offx + 2] << 8) & 0x0000FF00) |
-							   (meta[mid + object_member_key_offx + 3] & 0x000000FF) - 1;
+							   (meta[mid + object_member_key_offx + 3] & 0x000000FF)) - 1;
 					} else {
 						return mid;
 					}
@@ -746,10 +746,10 @@ System.out.println();
 					//found
 					if ((type == object_ptr || type == array_ptr) && !retPtr) {
 //						return get_key_location(meta, start) - element_type_sz;
-						return ((meta[start + object_member_key_offx] << 24) & 0xFF000000) |
+						return (((meta[start + object_member_key_offx] << 24) & 0xFF000000) |
 								   ((meta[start + object_member_key_offx + 1] << 16) & 0x00FF0000) |
 								   ((meta[start + object_member_key_offx + 2] << 8) & 0x0000FF00) |
-								   (meta[start + object_member_key_offx + 3] & 0x000000FF) - 1;
+								   (meta[start + object_member_key_offx + 3] & 0x000000FF)) - 1;
 					} else {
 						return start;
 					}
@@ -784,10 +784,10 @@ System.out.println();
 				if ((type == object_ptr || type == array_ptr) && !retPtr) {
 					//return get_key_location(meta, ext + obj_member_key_offx) - element_type_sz;
 //					return get_key_location(meta, ext) - element_type_sz;
-					return ((meta[ext + object_member_key_offx] << 24) & 0xFF000000) |
+					return (((meta[ext + object_member_key_offx] << 24) & 0xFF000000) |
 							   ((meta[ext + object_member_key_offx + 1] << 16) & 0x00FF0000) |
 							   ((meta[ext + object_member_key_offx + 2] << 8) & 0x0000FF00) |
-							   (meta[ext + object_member_key_offx + 3] & 0x000000FF) - 1;
+							   (meta[ext + object_member_key_offx + 3] & 0x000000FF)) - 1;
 				} else {
 					if (extDetail != null) {
 						extDetail.isExt = true;
@@ -886,10 +886,10 @@ System.out.println();
 					if ((type == object_ptr || type == array_ptr) && !retPtr) {
 						//return get_key_location(meta, mid + obj_member_key_offx) - element_type_sz;
 //						return get_key_location(meta, mid) - element_type_sz;
-						return ((meta[mid + object_member_key_offx] << 24) & 0xFF000000) |
+						return (((meta[mid + object_member_key_offx] << 24) & 0xFF000000) |
 							   ((meta[mid + object_member_key_offx + 1] << 16) & 0x00FF0000) |
 							   ((meta[mid + object_member_key_offx + 2] << 8) & 0x0000FF00) |
-							   (meta[mid + object_member_key_offx + 3] & 0x000000FF) - 1;
+							   (meta[mid + object_member_key_offx + 3] & 0x000000FF)) - 1;
 					} else {
 						return mid;
 					}
@@ -925,10 +925,10 @@ System.out.println();
 					//found
 					if ((type == object_ptr || type == array_ptr) && !retPtr) {
 //						return get_key_location(meta, start) - element_type_sz;
-						return ((meta[start + object_member_key_offx] << 24) & 0xFF000000) |
+						return (((meta[start + object_member_key_offx] << 24) & 0xFF000000) |
 								   ((meta[start + object_member_key_offx + 1] << 16) & 0x00FF0000) |
 								   ((meta[start + object_member_key_offx + 2] << 8) & 0x0000FF00) |
-								   (meta[start + object_member_key_offx + 3] & 0x000000FF) - 1;
+								   (meta[start + object_member_key_offx + 3] & 0x000000FF)) - 1;
 					} else {
 						return start;
 					}
@@ -963,10 +963,10 @@ System.out.println();
 				if ((type == object_ptr || type == array_ptr) && !retPtr) {
 					//return get_key_location(meta, ext + obj_member_key_offx) - element_type_sz;
 //					return get_key_location(meta, ext) - element_type_sz;
-					return ((meta[ext + object_member_key_offx] << 24) & 0xFF000000) |
+					return (((meta[ext + object_member_key_offx] << 24) & 0xFF000000) |
 							   ((meta[ext + object_member_key_offx + 1] << 16) & 0x00FF0000) |
 							   ((meta[ext + object_member_key_offx + 2] << 8) & 0x0000FF00) |
-							   (meta[ext + object_member_key_offx + 3] & 0x000000FF) - 1;
+							   (meta[ext + object_member_key_offx + 3] & 0x000000FF)) - 1;
 				} else {
 					if (extDetail != null) {
 						extDetail.isExt = true;

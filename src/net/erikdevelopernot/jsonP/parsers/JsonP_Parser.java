@@ -42,15 +42,15 @@ public class JsonP_Parser {
 	
 //public Map<Integer, Integer> testMap2 = new HashMap<>(9000000);
 //public Map<Integer, Integer> testMap3 = new HashMap<>();
-public int[][] testMap;
-public byte[][] testMapMeta;
-public int testMap_i[];
+//public int[][] testMap;
+//public byte[][] testMapMeta;
+//public int testMap_i[];
 private int hash;
-//private int hashKey;
-public int resizes;
-public int keyCount;
-byte[] path;
-int pathIndex;
+////private int hashKey;
+//public int resizes;
+//public int keyCount;
+//byte[] path;
+//int pathIndex;
 byte[] currentKey;
 int currentKeyLength;
 	/*
@@ -73,7 +73,7 @@ int currentKeyLength;
 		
 		if (preserveJson) {
 			// preserve json data and stack are separate structures
-			dataSz = json.length / 2;
+			dataSz = (int)(json.length / 2);
 			
 			hasEscapes = false;
 			escapes = new int[20];							//potential out of bounds Revisit
@@ -97,23 +97,23 @@ int currentKeyLength;
 		
 //int k = (json.length / 30) + 1;
 System.out.println("file size=" + json.length);
-if (json.length < 100000) {
-	testMap = new int[64][10];
-//	testMapMeta = new byte[64][10];
-//	testMap_i = new int[64];
-} else if (json.length < 5000000) {
-	testMap = new int[1024][10];
-//	testMapMeta = new byte[1024][10];
-//	testMap_i = new int[1024];
-} else {
-//	testMap = new int[9192][9192];
-	testMap = new int[1][1];
-//	testMapMeta = new byte[8096][10];
-//	testMap_i = new int[8096];
-}
-path = new byte[1024];
-//path[0] = '/';
-pathIndex = 0;
+//if (json.length < 100000) {
+//	testMap = new int[64][10];
+////	testMapMeta = new byte[64][10];
+////	testMap_i = new int[64];
+//} else if (json.length < 5000000) {
+//	testMap = new int[1024][10];
+////	testMapMeta = new byte[1024][10];
+////	testMap_i = new int[1024];
+//} else {
+////	testMap = new int[9192][9192];
+//	testMap = new int[1][1];
+////	testMapMeta = new byte[8096][10];
+////	testMap_i = new int[8096];
+//}
+//path = new byte[1024];
+////path[0] = '/';
+//pathIndex = 0;
 currentKey = new byte[1024];
 System.out.println("finally starting");
 	}
@@ -246,6 +246,7 @@ currentKeyLength = 1;
 
 				break;
 			} else {
+				
 				jsonIdx++;
 			}
 		}
@@ -254,14 +255,16 @@ currentKeyLength = 1;
 		
 if (lookForKey) {
 	currentKeyLength = jsonIdx - start -1;
-//	for (int i = start; i < jsonIdx-1; i++) {
+////	for (int i = start; i < jsonIdx-1; i++) {
 	for (int i = 0; i < currentKeyLength; i++) {
-//		hash = 31 * hash + json[i];
-//		hash = 31 * hash + json[start + i];
-//		path[pathIndex++] = json[start + i];
+////		hash = 31 * hash + json[i];
+////		hash = 31 * hash + json[start + i];
+////		path[pathIndex++] = json[start + i];
 		currentKey[i] = json[start + i];;
     }
-//	for (int i=0; i<pathIndex; i++) {
+}
+
+		//	for (int i=0; i<pathIndex; i++) {
 //		hash = 31 * hash + path[i];
 //System.out.print((char)path[i]);	
 //	}
@@ -301,7 +304,7 @@ if (lookForKey) {
 //		testMapMeta[hashKey] = tempMeta;
 //	}
 //	keyCount++;
-}
+//}
 
 		if (!lookForKey) {
 			if (!preserveJson) {
@@ -1170,18 +1173,18 @@ stackBufIdx = locStackIndx - parentElementSize;
 	/*
 	 * Increase a bucket in the Map Index
 	 */
-	private void increaseMapBucket(int bucketIndex) {
-		int[] temp = new int[testMap[bucketIndex].length * 2];
-		byte[] tempMeta = new byte[temp.length];
-							
-		for (int k=0; k<temp.length/2; k++) {
-			temp[k] = testMap[bucketIndex][k];
-			tempMeta[k] = testMapMeta[bucketIndex][k];
-		}
-		resizes++;
-		testMap[bucketIndex] = temp;
-		testMapMeta[bucketIndex] = tempMeta;
-	}
+//	private void increaseMapBucket(int bucketIndex) {
+//		int[] temp = new int[testMap[bucketIndex].length * 2];
+//		byte[] tempMeta = new byte[temp.length];
+//							
+//		for (int k=0; k<temp.length/2; k++) {
+//			temp[k] = testMap[bucketIndex][k];
+//			tempMeta[k] = testMapMeta[bucketIndex][k];
+//		}
+//		resizes++;
+//		testMap[bucketIndex] = temp;
+//		testMapMeta[bucketIndex] = tempMeta;
+//	}
 	
 	
 	/*
@@ -1210,6 +1213,11 @@ stackBufIdx = locStackIndx - parentElementSize;
 	 * @return the parseStats
 	 */
 	public ParseStats getParseStats() {
+		parseStats.metaLength = dataSz;
+		parseStats.metaIndex = dataIdx;
+		parseStats.dataLength = (preserveJson) ? dataSz : jsonLen;
+		parseStats.dataIndex = (preserveJson) ? dataIdx :jsonIdx;
+		
 		return parseStats;
 	}
 	
@@ -1217,6 +1225,20 @@ stackBufIdx = locStackIndx - parentElementSize;
 	public class ParseStats {
 		public int stackIncreases;
 		public int dataIncreases;
+		public int metaLength;
+		public int metaIndex;
+		public int dataLength;
+		public int dataIndex;
+		
+		public String getStats() {
+			return new StringBuilder("Parse Stats:\n  Stack Increases: ").append(stackIncreases).
+				append("\n  Data Increases: ").append(dataIncreases).
+				append("\n  Meta Length: ").append(metaLength).
+				append("\n  Meta Index: ").append(metaIndex).
+				append("\n  Data Length: ").append(dataLength).
+				append("\n  Data Index: ").append(dataIndex).toString();
+				
+		}
 	}
 	
 	
