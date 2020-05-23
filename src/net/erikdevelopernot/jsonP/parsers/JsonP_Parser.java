@@ -45,7 +45,9 @@ public class JsonP_Parser {
 public int[][] testMap;
 public byte[][] testMapMeta;
 public int testMap_i[];
+private int testMapLength;
 private int hash;
+private int hashKey;
 //private int hashKey;
 public int resizes;
 public int keyCount;
@@ -100,15 +102,18 @@ System.out.println("file size=" + json.length);
 if (json.length < 100000) {
 	testMap = new int[64][10];
 //	testMapMeta = new byte[64][10];
-//	testMap_i = new int[64];
+	testMap_i = new int[64];
+	testMapLength = 64;
 } else if (json.length < 5000000) {
 	testMap = new int[1024][10];
 //	testMapMeta = new byte[1024][10];
-//	testMap_i = new int[1024];
+	testMap_i = new int[1024];
+	testMapLength = 1024;
 } else {
 	testMap = new int[100_000][200];
 //	testMapMeta = new byte[8096][10];
-//	testMap_i = new int[8096];
+	testMap_i = new int[100_000];
+	testMapLength = 100_000;
 }
 path = new byte[1024];
 //path[0] = '/';
@@ -253,7 +258,7 @@ if (lookForKey) {
 	for (int i = 0; i < currentKeyLength; i++) {
 //		hash = 31 * hash + json[i];
 //		hash = 31 * hash + json[start + i];
-//		path[pathIndex++] = json[start + i];
+		path[pathIndex++] = json[start + i];
     }
 //	for (int i=0; i<pathIndex; i++) {
 //		hash = 31 * hash + path[i];
@@ -625,8 +630,9 @@ if (lookForKey) {
 
 //int localHash = hash;
 //int localHashKey = hashKey;
-//int localCurrentKeyLength = currentKeyLength;
-//path[pathIndex++] = '/';
+int localCurrentKeyLength = currentKeyLength;
+int localTempKeyLength;
+path[pathIndex++] = '/';
 		
 		stackBuf[locStackIndx] = Common.object;
 		
@@ -698,37 +704,41 @@ if (lookForKey) {
 					
 					stackBuf[locStackIndx - Common.member_sz] = Common.object_ptr;
 
-					
-					
-//testMap[hash][testMap_i[hash]] = dataIdx + Common.member_keyvalue_offx;
-//testMapMeta[hash][testMap_i[hash]++] = Common.object_ptr;
-//					
-//if (testMap_i[hash] == testMap[hash].length) {
-//	increaseMapBucket(hash);
-//}
+
 pathIndex -= 1;
-//currentKeyLength = localCurrentKeyLength;
 hash=0;
 for (int i=0; i<pathIndex; i++) {
 	hash = 31 * hash + path[i];
-//	System.out.print((char)path[i]);	
+//						System.out.print((char)path[i]);	
 }
-//if (hash < 0)
-//	hash *= -1;
+
+hashKey = (hash < 0) ? ((hash * -1) % testMapLength) : (hash % testMapLength);
+					
+testMap[hashKey][testMap_i[hashKey]++] = hash;
+testMap[hashKey][testMap_i[hashKey]++] = dataIdx; // + Common.member_keyvalue_offx;
+//testMapMeta[hash][testMap_i[hash]++] = Common.object_ptr;
+//					
+if (testMap_i[hashKey] == testMap[hashKey].length) {
+	increaseMapBucket(hashKey);
+}
+
 //testMap[hash % 100_000][0]++;
+
 //if (testMap2.put(hash, dataIdx) != null) {
-////	for (int i=0; i<pathIndex; i++)
-////		System.out.print((char)path[i]);
-////	
-////	System.out.println("  <-- Avalue already existed");
+//	for (int i=0; i<pathIndex; i++)
+//		System.out.print((char)path[i]);
+//	
+//	System.out.println("  <-- Avalue already existed");
 //	resizes++;
 //	
 //	Integer p = testMap3.put(hash, 2);
 //	if (p != null)
 //		testMap3.put(hash, ++p);
 //}
+
 //System.out.println();
-			
+currentKeyLength = localCurrentKeyLength;
+		
 					
 					toReturn = dataIdx;
 					dataIdx += (stackBufIdx - locStackIndx);
@@ -754,7 +764,7 @@ for (int i=0; i<pathIndex; i++) {
 					numKeys ++;
 	
 					parseText();
-	
+localTempKeyLength = currentKeyLength;	
 					lookForKey = false;
 					localLookForKey = false;
 					valueStart = jsonIdx;
@@ -776,8 +786,8 @@ for (int i=0; i<pathIndex; i++) {
 					eatWhiteSpace();;
 					parseValue();
 					stackBufIdx += Common.member_sz;
-	
-pathIndex -= currentKeyLength;
+//System.out.println("\npathIndex: " + pathIndex + ", localTempKeyLength: " + localTempKeyLength);
+pathIndex -= localTempKeyLength;
 					
 					continue;
 				} else if (json[jsonIdx] == ',') {
@@ -813,7 +823,7 @@ pathIndex -= currentKeyLength;
 		int toReturn;
 
 int localCurrentKeyLength = currentKeyLength;
-//path[pathIndex++] = '/';
+path[pathIndex++] = '/';
 int indexMult = 10;
 int indexNumBytes;
 
@@ -878,20 +888,29 @@ int indexNumBytes;
 			
 pathIndex -= 1;
 currentKeyLength = localCurrentKeyLength;
-hash=0;
-for (int i=0; i<pathIndex; i++) {
-	hash = 31 * hash + path[i];
-//	System.out.print((char)path[i]);	
-}
+//hash=0;
+//for (int i=0; i<pathIndex; i++) {
+//	hash = 31 * hash + path[i];
+////	System.out.print((char)path[i]);	
+//}
 //if (hash < 0)
 //	hash *= -1;
+//
+//testMap[hash % 100_000][testMap_i[hash % 100_000]] = dataIdx; // + Common.member_keyvalue_offx;
+////testMapMeta[hash][testMap_i[hash]++] = Common.object_ptr;
+////					
+//if (testMap_i[hash % 100_000] == testMap[hash % 100_000].length) {
+//	increaseMapBucket(hash % 100_000);
+//}
+
+
 //testMap[hash % 100_000][0]++;
 
 //if (testMap2.put(hash, dataIdx) != null) {
-////	for (int i=0; i<pathIndex; i++)
-////		System.out.print((char)path[i]);
-////	
-////	System.out.println("  <-- Avalue already existed");
+//	for (int i=0; i<pathIndex; i++)
+//		System.out.print((char)path[i]);
+//	
+//	System.out.println("  <-- Avalue already existed");
 //	resizes++;
 //	
 //	Integer p = testMap3.put(hash, 2);
@@ -912,7 +931,7 @@ for (int i=0; i<pathIndex; i++) {
 		}
 	
 //for now assume less then 10
-//path[pathIndex++] = '0';
+path[pathIndex++] = '0';
 		
 		parseValue();
 		numElements++;
@@ -966,16 +985,16 @@ while (numElements >= (indexMult * 10)) {
 //	indexMult %= numElements / indexMult;
 //}
 int tempNumElements = numElements;
-//for (int j=1; j<indexNumBytes; j++) {
-//	if (indexMult > 0) {
-//		path[pathIndex++] = (byte)((tempNumElements / indexMult) + 48);
-//		tempNumElements %= indexMult;
-//		indexMult /= 10;
-//	} else {
-//		path[pathIndex++] = '0';
-//	}
-//}
-//path[pathIndex++] = (byte)((numElements % 10) + 48);
+for (int j=1; j<indexNumBytes; j++) {
+	if (indexMult > 0) {
+		path[pathIndex++] = (byte)((tempNumElements / indexMult) + 48);
+		tempNumElements %= indexMult;
+		indexMult /= 10;
+	} else {
+		path[pathIndex++] = '0';
+	}
+}
+path[pathIndex++] = (byte)((numElements % 10) + 48);
 
 				lookForValue = false;
 				parseValue();
@@ -986,6 +1005,7 @@ pathIndex -= indexNumBytes;
 			}
 		}
 		
+		//no more elements save stack buf meta
 		stackBuf[locStackIndx + Common.member_sz] = (byte)(0xff & (numElements >> 24));
 		stackBuf[locStackIndx + Common.member_sz + 1] = (byte)(0xff & (numElements >> 16));
 		stackBuf[locStackIndx + Common.member_sz + 2] = (byte)(0xff & (numElements >> 8));
@@ -1022,18 +1042,29 @@ pathIndex -= indexNumBytes;
 		
 pathIndex -= 1;
 currentKeyLength = localCurrentKeyLength;
-hash=0;
-for (int i=0; i<pathIndex; i++) {
-	hash = 31 * hash + path[i];
-//	System.out.print((char)path[i]);	
-}
+
+//hash=0;
+//for (int i=0; i<pathIndex; i++) {
+//	hash = 31 * hash + path[i];
+////	System.out.print((char)path[i]);	
+//}
+//
 //if (hash < 0)
 //	hash *= -1;
+//
+//testMap[hash % 100_000][testMap_i[hash % 100_000]] = dataIdx; // + Common.member_keyvalue_offx;
+////testMapMeta[hash][testMap_i[hash]++] = Common.object_ptr;
+////					
+//if (testMap_i[hash % 100_000] == testMap[hash % 100_000].length) {
+//	increaseMapBucket(hash % 100_000);
+//}
+
+
 //testMap[hash % 100_000][0]++;
 //if (testMap2.put(hash, dataIdx) != null) {
-////	for (int i=0; i<pathIndex; i++)
-////		System.out.print((char)path[i]);
-////	System.out.println("  <-- Avalue already existed");
+//	for (int i=0; i<pathIndex; i++)
+//		System.out.print((char)path[i]);
+//	System.out.println("  <-- Avalue already existed");
 //	resizes++;
 //	
 //	Integer p = testMap3.put(hash, 2);
@@ -1097,15 +1128,15 @@ for (int i=0; i<pathIndex; i++) {
 	 */
 	private void increaseMapBucket(int bucketIndex) {
 		int[] temp = new int[testMap[bucketIndex].length * 2];
-		byte[] tempMeta = new byte[temp.length];
+//		byte[] tempMeta = new byte[temp.length];
 							
 		for (int k=0; k<temp.length/2; k++) {
 			temp[k] = testMap[bucketIndex][k];
-			tempMeta[k] = testMapMeta[bucketIndex][k];
+//			tempMeta[k] = testMapMeta[bucketIndex][k];
 		}
 		resizes++;
 		testMap[bucketIndex] = temp;
-		testMapMeta[bucketIndex] = tempMeta;
+//		testMapMeta[bucketIndex] = tempMeta;
 	}
 	
 	
