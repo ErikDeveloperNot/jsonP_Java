@@ -60,7 +60,7 @@ public class Driver {
 //		testManual();
 //		testJsonPElementAccess("/Users/user1/eclipse-workspace/jsonP_java/examples/simple5.json");
 //		testJsonPElementAccess("/Users/user1/Downloads/large.json");
-		testJsonPElementAccess(webappJson, 1);
+		testJsonPElementAccess(largeJson, 1);
 		
 		//uncomment to test Fangiong
 //		testFangiongParser("/Users/user1/Downloads/large.json");
@@ -581,7 +581,7 @@ System.out.println("Time: " + (f-s) + "m/s");
 				long s = System.currentTimeMillis();
 	
 				byte[] jsonData = getBytes(json);
-				parser = new JsonP_Parser(jsonData, Common.CONVERT_NUMERICS);// | Common.CONVERT_NUMERICS);
+				parser = new JsonP_Parser(jsonData, Common.DONT_SORT_KEYS);// | Common.CONVERT_NUMERICS);
 				jsonPJson = parser.parse();
 				
 				long f = System.currentTimeMillis();
