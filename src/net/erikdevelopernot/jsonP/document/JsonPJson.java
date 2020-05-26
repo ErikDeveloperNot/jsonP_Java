@@ -19,6 +19,12 @@ public class JsonPJson {
 	private boolean metaEqData;
 	private int docRoot;
 	
+//testing - object map structures
+public int[][] testMap;
+public int testMap_i[];
+private int testMapLength;
+
+	
 	//options
 	private boolean dontSortKeys;
 	private boolean weakRef;
@@ -56,7 +62,13 @@ public class JsonPJson {
 	 * Constructors 
 	 */
 	// called by parser
-	public JsonPJson(byte[] data, byte[] metaData, int dataLength, int metaLength, int docRoot, int options) {
+//	public JsonPJson(byte[] data, byte[] metaData, int dataLength, int metaLength, int docRoot, int options) {
+	public JsonPJson(byte[] data, byte[] metaData, int dataLength, int metaLength, int[][] testMap, int[] testMap_i, 
+			int testMapLength, int docRoot, int options) {
+this.testMap = testMap;
+this.testMap_i = testMap_i;
+this.testMapLength = testMapLength;
+
 		this.data = data;
 		this.metaData = metaData;
 		this.dataLength = dataLength;
@@ -85,8 +97,10 @@ public class JsonPJson {
 	}
 	
 	// called by parser
-	public JsonPJson(byte[] data, int dataLength, int docRoot, int options) {
-		this(data, data, dataLength, dataLength, docRoot, options);
+//	public JsonPJson(byte[] data, int dataLength, int docRoot, int options) {
+//		this(data, data, dataLength, dataLength, docRoot, options);
+	public JsonPJson(byte[] data, int dataLength, int[][] testMap, int[] testMap_i, int testMapLength, int docRoot, int options) {
+		this(data, data, dataLength, dataLength, testMap, testMap_i, testMapLength, docRoot, options);
 		useJson = false;
 	}
 	
@@ -184,7 +198,7 @@ byte elementSize;
 	 * 
 	 * @returns new container id
 	 */
-	public int addContainer(String path, String delim, String key, int elementCnt, byte type) throws JsonPException {
+	public int addContainer(String path, char delim, String key, int elementCnt, byte type) throws JsonPException {
 		int parentId = getObjectId(path, delim);
 		
 		return addContainer(key, elementCnt, parentId, type);
@@ -318,7 +332,7 @@ metaData[metaIndx++] = (byte)(hash & 0xFF);
 	 * 
 	 * returns elements id
 	 */
-	public int addValueType(String path, String delim, String key, byte type, Object value) throws JsonPException {
+	public int addValueType(String path, char delim, String key, byte type, Object value) throws JsonPException {
 		int parentId = getObjectId(path, delim);
 
 		if (parentId >= 0) {
@@ -468,7 +482,7 @@ metaData[metaSlot + Common.object_member_hash_offx + 3] = (byte)(hash & 0xFF);
 	 * 
 	 * returns 1=success, -1=error (sets errorCode)
 	 */
-	public int updateValue(String path, String delim, byte type, Object value) {
+	public int updateValue(String path, char delim, byte type, Object value) {
 		int id = getObjectId(path, delim, true, true, false);
 		
 		return updateValue(id, type, value);
@@ -606,7 +620,7 @@ metaData[metaSlot + Common.object_member_hash_offx + 3] = (byte)(hash & 0xFF);
 
 	
 	//for delete value it makes it way easier to have full path so no option for object_id for now
-	public void deleteValue(String path, String delim) throws JsonPException {
+	public void deleteValue(String path, char delim) throws JsonPException {
 		int id = getObjectId(path, delim, true, true, true);
 		
 		if (id > 0) {
@@ -682,9 +696,167 @@ metaData[metaSlot + Common.object_member_hash_offx + 3] = (byte)(hash & 0xFF);
 	 * 
 	 * returns elements object id or -1 if not found
 	 */
-	private int getObjectId(String path, String delim, boolean retPtr, boolean setParentId, boolean setExtInfo)
+	private int getObjectId(String path, char delim, boolean retPtr, boolean setParentId, boolean setExtInfo)
 	{
-		StringTokenizer toker = new StringTokenizer(path, delim);
+		//dont check for trailing delim for now - CHECK for HASH Col
+		int pathHash = path.hashCode();
+		int bucket = (pathHash >= 0) ? (pathHash % testMapLength) : ((pathHash * -1) % testMapLength); 
+		
+//System.out.println("Checking: " + pathHash + ", in bucket: " + bucket);
+		
+		for (int i=0; i<testMap[bucket].length; i+=2) {
+//System.out.println("  " + testMap[bucket][i]);
+			if (testMap[bucket][i] == pathHash) {
+				return testMap[bucket][i+1];
+			}
+		}
+
+		
+///////START WORKING		
+		int result = -1;
+//System.out.println("Second: " + path.substring(0, path.lastIndexOf(delim)));	
+		pathHash = path.substring(0, path.lastIndexOf(delim)).hashCode();
+		bucket = (pathHash >= 0) ? (pathHash % testMapLength) : ((pathHash * -1) % testMapLength); 
+
+//System.out.println("Checking: " + pathHash + ", in bucket: " + bucket);
+		for (int i=0; i<testMap[bucket].length; i+=2) {
+//System.out.println("  " + testMap[bucket][i]);
+			if (testMap[bucket][i] == pathHash) {
+				result = testMap[bucket][i+1];
+				break;
+			}
+		}
+		
+		if (result > -1) {
+			int numKeys;
+			int end;
+			boolean keysSorted;
+		
+			if (setParentId)
+				parentContainerID = result;
+			
+			result += Common.object_member_sz;
+			numKeys = ((metaData[result] << 24) & 0xFF000000) |
+				      	  ((metaData[result + 1] << 16) & 0x00FF0000) |
+				      	  ((metaData[result + 2] << 8) & 0x0000FF00) |
+				      	  (metaData[result + 3] & 0x000000FF);
+			result += Common.root_sz;
+			end = result + (numKeys * Common.object_member_sz) - Common.object_member_sz;
+			String key = path.substring(path.lastIndexOf(delim)+1);
+	
+			//backwards, searchKeysByHash -sorted true means it is true keys are NOT sorted
+			keysSorted = (!dontSortKeys && (numKeys > Common.SORT_THRESH_HOLD)) ? false : true;
+	
+			if (retPtr) {
+				if (setExtInfo) {
+					extDetail.isExt = false;
+					result = Common.searchKeysByHash(key, result, 
+							end, metaData, data, true, keysSorted, extDetail);
+				} else {
+					result = Common.searchKeysByHash(key, result, 
+							end, metaData, data, true, keysSorted, null);
+				}
+			} else {
+				result = Common.searchKeysByHash(key, result, 
+						end, metaData, data, false, keysSorted, null);
+			}
+
+			return result;
+///////END WORKING
+		
+		
+//		int result = -1;
+//		int depth = 1;
+//		String path2 = path;
+//		int lastIndex = 1;
+//		
+//		while (lastIndex > 0) {
+//			lastIndex = path2.lastIndexOf(delim);
+//			path2 = path2.substring(0, lastIndex);
+////System.out.println("Second: " + path2);	
+//			pathHash = path2.hashCode();
+//			bucket = (pathHash >= 0) ? (pathHash % testMapLength) : ((pathHash * -1) % testMapLength); 
+//	
+////System.out.println("Checking: " + pathHash + ", in bucket: " + bucket);
+//			for (int i=0; i<testMap[bucket].length; i+=2) {
+////System.out.println("  " + testMap[bucket][i]);
+//				if (testMap[bucket][i] == pathHash) {
+//					result = testMap[bucket][i+1];
+//					break;
+//				}
+//			}
+//			
+//			if (result > 0) {
+//				break;
+//			} else {
+//				depth++;
+//			}
+//		}
+////System.out.println("result: " + result);		
+//		if (result > -1) {
+//			String tokens[] = path.split(String.valueOf(delim));
+//			int numKeys;
+//			int end;
+//			boolean keysSorted;
+//			int elementSize;
+//			
+//			while (depth > 0) {
+//			
+//				if (setParentId)
+//					parentContainerID = result;
+//				
+//				if (metaData[result] == Common.object)
+//					elementSize = Common.object_member_sz;
+//				else
+//					elementSize = Common.array_member_sz;
+//				
+//				result += elementSize;
+//				numKeys = ((metaData[result] << 24) & 0xFF000000) |
+//					      	  ((metaData[result + 1] << 16) & 0x00FF0000) |
+//					      	  ((metaData[result + 2] << 8) & 0x0000FF00) |
+//					      	  (metaData[result + 3] & 0x000000FF);
+//				result += Common.root_sz;
+//				end = result + (numKeys * elementSize) - elementSize;
+//				String key = tokens[tokens.length - depth];
+//		
+//				//backwards, searchKeysByHash -sorted true means it is true keys are NOT sorted
+//				keysSorted = (!dontSortKeys && (numKeys > Common.SORT_THRESH_HOLD)) ? false : true;
+//		
+//				if (retPtr) {
+//					if (setExtInfo) {
+//						extDetail.isExt = false;
+//						result = Common.searchKeysByHash(key, result, 
+//								end, metaData, data, true, keysSorted, extDetail);
+//					} else {
+//						result = Common.searchKeysByHash(key, result, 
+//								end, metaData, data, true, keysSorted, null);
+//					}
+//				} else {
+//					result = Common.searchKeysByHash(key, result, 
+//							end, metaData, data, false, keysSorted, null);
+//				}
+//	
+////				return result;
+//				if (result == -1) {
+//					return result;
+//				} else {
+//					depth--;
+//				}
+//			}
+//		
+//			return result;
+//		
+		} 
+		
+//		System.out.println("No Parent appears to be indexed, fail to old search");
+		
+		
+		/*
+		 * !!!!!!!!!
+		 * This code should only be used in the case of manually creating a new container using the object ID
+		 * of its parent container vs uses the containers full path (String)
+		 */
+		StringTokenizer toker = new StringTokenizer(path, String.valueOf(delim));
 		
 		if (toker.countTokens() < 1)		//assume this is docroot
 			return docRoot;
@@ -697,7 +869,7 @@ metaData[metaSlot + Common.object_member_hash_offx + 3] = (byte)(hash & 0xFF);
 //		int elementSize = (parent == Common.object) ? Common.object_member_sz : Common.array_member_sz;
 //		int extNextOffx = (parent == Common.object) ? Common.object_member_key_ext_next_offx : Common.array_member_value_ext_next_offx;
 	
-		int result = docRoot;
+		result = docRoot;
 		int start = docRoot + ((parent == Common.object) ? Common.object_member_sz : Common.array_member_sz);
 
 		int numKeys = ((metaData[start] << 24) & 0xFF000000) |
@@ -759,27 +931,31 @@ metaData[metaSlot + Common.object_member_hash_offx + 3] = (byte)(hash & 0xFF);
 					}
 				}
 			} else {
+//				byte[] tokBytes = tok.getBytes();
+				//backwards, searchKeysByHash -sorted true means it is true keys are NOT sorted
+				boolean keysSorted = (!dontSortKeys && (numKeys > Common.SORT_THRESH_HOLD)) ? false : true;
+				
 				if (nextTok == null) {
 					if (retPtr) {
 						if (setExtInfo) {
 							extDetail.isExt = false;
-							result = Common.searchKeysByHash(tok.getBytes(), start, 
+							result = Common.searchKeysByHash(tok, start, 
 									(start + (numKeys * Common.object_member_sz) - Common.object_member_sz), 
-									metaData, data, true, dontSortKeys, extDetail);
+									metaData, data, true, keysSorted, extDetail);
 						} else {
-							result = Common.searchKeysByHash(tok.getBytes(), start, 
+							result = Common.searchKeysByHash(tok, start, 
 									(start + (numKeys * Common.object_member_sz) - Common.object_member_sz), 
-									metaData, data, true, dontSortKeys, null);
+									metaData, data, true, keysSorted, null);
 						}
 					} else {
-						result = Common.searchKeysByHash(tok.getBytes(), start, 
+						result = Common.searchKeysByHash(tok, start, 
 								(start + (numKeys * Common.object_member_sz) - Common.object_member_sz), 
-								metaData, data, false, dontSortKeys, null);
+								metaData, data, false, keysSorted, null);
 					}
 				} else {
-					result = Common.searchKeysByHash(tok.getBytes(), start, 
+					result = Common.searchKeysByHash(tok, start, 
 							(start + (numKeys * Common.object_member_sz) - Common.object_member_sz), 
-							metaData, data, false, dontSortKeys, null);
+							metaData, data, false, keysSorted, null);
 				}
 			}
 			
@@ -873,7 +1049,7 @@ metaData[metaSlot + Common.object_member_hash_offx + 3] = (byte)(hash & 0xFF);
 	 * 
 	 * returns elements object id or -1 if not found
 	 */
-	public int getObjectId(String path, String delim) {
+	public int getObjectId(String path, char delim) {
 		return getObjectId(path, delim, false, false, false);
 	}
 	
@@ -914,7 +1090,7 @@ metaData[metaSlot + Common.object_member_hash_offx + 3] = (byte)(hash & 0xFF);
 	 * 
 	 * returns number of elements
 	 */
-	public int getMembersCount(String path, String delim) throws JsonPException {
+	public int getMembersCount(String path, char delim) throws JsonPException {
 		int id = getObjectId(path, delim);
 		
 		if (id >= 0)
@@ -1247,7 +1423,7 @@ metaData[metaSlot + Common.object_member_hash_offx + 3] = (byte)(hash & 0xFF);
 	 * returns double value
 	 * throws JsonPException
 	 */
-	public double getDoubleValue(String path, String delim) throws JsonPException {
+	public double getDoubleValue(String path, char delim) throws JsonPException {
 		int id = getObjectId(path, delim, false, true, false);
 		
 		if (id > 0) {
@@ -1309,7 +1485,7 @@ metaData[metaSlot + Common.object_member_hash_offx + 3] = (byte)(hash & 0xFF);
 	 * returns long value
 	 * throws JsonPException
 	 */
-	public long getLongValue(String path, String delim) throws JsonPException {
+	public long getLongValue(String path, char delim) throws JsonPException {
 		int id = getObjectId(path, delim, false, true, false);
 		
 		if (id > 0) {
@@ -1371,7 +1547,7 @@ metaData[metaSlot + Common.object_member_hash_offx + 3] = (byte)(hash & 0xFF);
 	 * returns boolean value
 	 * throws JsonPException
 	 */
-	public boolean getBooleanValue(String path, String delim) throws JsonPException {
+	public boolean getBooleanValue(String path, char delim) throws JsonPException {
 		int id = getObjectId(path, delim, false, true, false);
 		
 		if (id > 0) {
@@ -1412,7 +1588,7 @@ metaData[metaSlot + Common.object_member_hash_offx + 3] = (byte)(hash & 0xFF);
 	 * returns string value
 	 * throws JsonPException
 	 */
-	public String getStringValue(String path, String delim) throws JsonPException {
+	public String getStringValue(String path, char delim) throws JsonPException {
 		int id = getObjectId(path, delim, false, true, false);
 	
 		if (id > 0) {

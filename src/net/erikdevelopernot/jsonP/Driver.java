@@ -52,7 +52,7 @@ public class Driver {
 	static final String canadaJson = "/Users/user1/udemy/CPP/UdemyCPP/jsonP_dyn_drvr/samples/canada.json";
 	static final String sample5Json = "/Users/user1/udemy/CPP/UdemyCPP/jsonP_dyn_drvr/samples/sample5.json";
 	static final String citmJson = "/Users/user1/udemy/CPP/UdemyCPP/jsonP_dyn_drvr/samples/citm_catalog.json.txt";
-	static final String simple5Json = "/Users/user1/eclipse-workspace/jsonP_java/examples/simple3.json";
+	static final String simpleJson = "/Users/user1/eclipse-workspace/jsonP_java/examples/simple5.json";
 	static final String largeJson = "/Users/user1/Downloads/large.json";
 	
 	public static void main(String[] args) throws Exception {
@@ -106,11 +106,12 @@ public class Driver {
 		System.out.println("Stringify time: " + (f2-f) + "m/s");
 //System.gc();
 // start remove
-//int id = jsonPJson.getObjectId("/obj_ptr_will_break/key__2", "/");
+//int id = jsonPJson.getObjectId("/obj_ptr_will_break/key__2", '/');
 //System.out.println("id: " + id);
 // end remove
 //		System.console().readLine();
-		String s1 = "/obj_ptr_will_break/key__2/true"; String s2 = "/";
+		String s1 = "/obj_ptr_will_break/key__2/true"; 
+		char s2 = '/';
 		int objID = jsonPJson.getObjectId("/obj_ptr_will_break/key1", s2);
 		s = System.currentTimeMillis();
 		
@@ -164,7 +165,7 @@ public class Driver {
 			json.addValueType(Common.string, 0, "akey2", "value2");
 			int key3ID = json.addValueType(Common.string, 0, "Key3", "value3");
 			json.addValueType(Common.string, 0, "akey4", "value4");
-			json.addValueType("/", "/", "AKey", Common.string, "AKey Value");
+			json.addValueType("/", '/', "AKey", Common.string, "AKey Value");
 			json.addValueType(Common.bool_true, 0, "Bool_T", null);
 			json.addValueType(Common.bool_false, 0, "Bool_f", null);
 			json.addValueType(Common.numeric_long, 0, "nLong", new Long(987654321));
@@ -191,23 +192,23 @@ public class Driver {
 			
 //			System.out.println("Number of members in array: " + json.getMembersCount(arryContainer));
 			
-			int embedObj = json.addContainer("/Container_1/Array", "/", null, 1, Common.object);
+			int embedObj = json.addContainer("/Container_1/Array", '/', null, 1, Common.object);
 //			int embedObj = json.addContainer("www", 1, arryContainer, Common.object);
 			json.addValueType(Common.string, embedObj, "embed_key", "value");
-			json.addValueType("/Container_1/Array/5", "/", "embed_key2", Common.bool_true, null);
-			int embedAry = json.addContainer("Container_1/Array", "/", null, 1, Common.array);
+			json.addValueType("/Container_1/Array/5", '/', "embed_key2", Common.bool_true, null);
+			int embedAry = json.addContainer("Container_1/Array", '/', null, 1, Common.array);
 			json.addValueType(Common.string, embedAry, null, "value");
-			json.addContainer("/Container_1/Array/6", "/", null, 4, Common.array);
-			json.addValueType("/Container_1/Array/6/1", "/", null, Common.bool_false, null);
-			json.addValueType("/Container_1/Array/6/1", "/", null, Common.numeric_double, new Double(9876.1234));
+			json.addContainer("/Container_1/Array/6", '/', null, 4, Common.array);
+			json.addValueType("/Container_1/Array/6/1", '/', null, Common.bool_false, null);
+			json.addValueType("/Container_1/Array/6/1", '/', null, Common.numeric_double, new Double(9876.1234));
 			
 			json.addValueType(Common.string, objContainer, "After_Array", "After");
 			
 			System.out.println(new String(json.stringify(0, true)));
-			json.deleteValue("/Container_1/Zee", "/");
-			json.deleteValue("/Container_1/Array", "/");
+			json.deleteValue("/Container_1/Zee", '/');
+			json.deleteValue("/Container_1/Array", '/');
 			
-			int retVal = json.updateValue("/Container_1/Long", "/", Common.numeric_double, new Double(98234.234993));
+			int retVal = json.updateValue("/Container_1/Long", '/', Common.numeric_double, new Double(98234.234993));
 			if (retVal < 0) {
 				System.out.println("Error in updateValue: " + json.getErrorCode());
 			}
@@ -215,20 +216,20 @@ public class Driver {
 			System.out.println("update Return val: " + retVal);
 			System.out.println(new String(json.stringify(0, true)));
 			
-//			int id = json.getObjectId("/Bool_f", "/");
+//			int id = json.getObjectId("/Bool_f", '/');
 //			System.out.println("ID of Bool_f key: " + id);
 			
-//			double d = json.getDoubleValue("/Container_1/Array/6/1/1", "/");
-			double d = json.getDoubleValue("/nDouble", "/");
+//			double d = json.getDoubleValue("/Container_1/Array/6/1/1", '/');
+			double d = json.getDoubleValue("/nDouble", '/');
 			System.out.println("Double value: " + d);
 			
-			long l = json.getLongValue("/nLong", "/");
+			long l = json.getLongValue("/nLong", '/');
 			System.out.println("Long value: " + l);
 			
-			boolean b = json.getBooleanValue("/Bool_T", "/");
+			boolean b = json.getBooleanValue("/Bool_T", '/');
 			System.out.println("boolean value: " + b);
 			
-			String s = json.getStringValue("/AKeyQ", "/");
+			String s = json.getStringValue("/AKeyQ", '/');
 			System.out.println("string value: " + s);
 			
 			System.exit(1);
@@ -317,13 +318,16 @@ public class Driver {
 			System.out.println("\n");
 			resetCounters();
 			
-String sPath = "/web-81app9/arr79/0/servlet174/0/init-param/init-param/init-param/init-param/init-param/init-param/redirectionClass";
-JsonNode node = null;
+String sValue = null;
+boolean bValue = false;
+int iValue = 0;
 long s = System.currentTimeMillis();
-for (int i=0; i<10000; i++)
-	rootNode.get("web-81app9").get("arr79").get(0).get("servlet174").get(0).get("init-param").get("init-param").get("init-param").get("init-param").get("init-param").get("init-param").get("redirectionClass");
+for (int i=0; i<10000; i++) {
+	iValue = rootNode.get("web-81app9").get("arr79").get(0).get("servlet174").get(0).get("init-param").get("init-param").get("init-param").get("init-param").get("init-param").get("init-param").get("maxUrlLength").asInt();
+}
 //System.out.println(rootNode.findValue(sPath).asText());
 long f = System.currentTimeMillis();
+System.out.println("Value: " + iValue);
 System.out.println("Time: " + (f-s) + "m/s");
 
 		} catch (Exception e) {
@@ -581,7 +585,7 @@ System.out.println("Time: " + (f-s) + "m/s");
 				long s = System.currentTimeMillis();
 	
 				byte[] jsonData = getBytes(json);
-				parser = new JsonP_Parser(jsonData, Common.DONT_SORT_KEYS);// | Common.CONVERT_NUMERICS);
+				parser = new JsonP_Parser(jsonData, Common.CONVERT_NUMERICS);// | Common.DONT_SORT_KEYS);
 				jsonPJson = parser.parse();
 				
 				long f = System.currentTimeMillis();
@@ -678,13 +682,20 @@ int index =0;
 		
 //System.gc();
 //System.console().readLine();
-String sPath = "/web-81app9/arr79/0/servlet174/0/init-param/init-param/init-param/init-param/init-param/init-param/redirectionClass";
-String sValue;
+String sPath = "/web-81app9/arr79/0/servlet174/0/init-param/init-param/init-param/init-param/init-param/init-param/array1/2";
+//String sPath = "web-81app9arr790servlet1740init-paraminit-paraminit-paraminit-paraminit-paraminit-parammaxUrlLength";
+//String sPath = "/obj_ptr_will_break/key__2/bb/rr/0";
+String sValue = null;
+boolean bValue = false;
+long iValue = 0;
 int id=-1;
 
 long s = System.currentTimeMillis();
-for (int i=0; i<10000; i++)
-	id = jsonPJson.getObjectId(sPath, "/");
+for (int i=0; i<10000; i++) {
+	id = jsonPJson.getObjectId(sPath, '/');
+//	sValue = jsonPJson.getStringValue(sPath, '/');
+//	iValue = jsonPJson.getLongValue(sPath, '/');
+}
 long f = System.currentTimeMillis();
 
 //KeyEntrySet es = (KeyEntrySet)jsonPJson.getContainerElements(id);
@@ -692,11 +703,11 @@ long f = System.currentTimeMillis();
 //	System.out.println("Type: " + Common.getElementType(es.getElementType(i)) + ", Key name: " + es.getKeyName(i) +
 //			", id: " + es.getAsArray(i));
 //}
+//sValue = jsonPJson.getStringValue(Common.object, id);
+System.out.println("id: " + id + ", element type: " + jsonPJson.getElementType(id) + ", time: " + (f-s) + "m/s");
+System.out.println("Value: " + iValue + ", time: " + (f-s) + "m/s");
 
-System.out.println("id: " + id + ", value: " + jsonPJson.getStringValue(Common.object, id) + ", time: " + (f-s) + "m/s");
-//System.out.println("Value: " + sValue + ", time: " + (f-s) + "m/s");
-
-//id = jsonPJson.getObjectId("/web-81app9/arr79", "/");
+//id = jsonPJson.getObjectId("/web-81app9/arr79", '/');
 //System.out.println("id: " + id);
 
 //			System.exit(0);

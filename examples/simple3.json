@@ -50,6 +50,6 @@
 	"num_neg_dec": -7372244,
 	"num_flt": 12345.6789,
 	"num_flt_sci": 1234.567E+3,
-	"key3" : [ "arry_v1", "arry_v2", "arry_v3", ["abc", "def", "ghi"], { "k1" : "v1", "k2" : "v2" } ]
+	"key3" : [ "arry_v1", "arry_v2", "arry_v3", ["abc", "def", "ghi", [true]], { "k1" : "v1", "k2" : "v2" } ]
 	
 }

@@ -60,6 +60,8 @@ public class Common {
 	public static final int array_member_value_ext_next_offx = array_member_sz;
 	
 	public static final int LONG_DOUBLE_SZ = 8;
+	public static final int SORT_THRESH_HOLD = 20;
+	
 
 	/*
 	 * borrowed from Chad Austin, sajson; who borrowed it from Rich Geldreich's Purple JSON parser
@@ -829,9 +831,11 @@ public class Common {
 	 * 
 	 * returns object id if found or 0 or -1 if not
 	 */
-	public static int searchKeysByHash(byte[] key, int start, int end, byte[] meta, byte[] data, 
-											boolean retPtr, boolean dontSortKeys, ExtDetail extDetail) {
-	
+//	public static int searchKeysByHash(byte[] key, int keyStart, int keyEnd, int start, int end, byte[] meta, 
+//											byte[] data, boolean retPtr, boolean dontSortKeys, ExtDetail extDetail) {
+	public static int searchKeysByHash(String key, int start, int end, byte[] meta, 
+			byte[] data, boolean retPtr, boolean dontSortKeys, ExtDetail extDetail) {
+//System.out.println("Searching for key: " + new String(key, keyStart, (keyEnd-keyStart+1)));	
 		int mid; // = (((end - start) / sizeof(obj_member)) / 2) * sizeof(obj_member) + start;
 //		int ext = get_ext_start(meta, end + obj_member_sz);
 		int ext = ((meta[Common.object_member_key_offx + end + Common.object_member_sz] << 24) & 0xFF000000) |
@@ -841,10 +845,14 @@ public class Common {
 
 		int lastExt = ext;
 		
-		int keyHash=0;
-		for (int i=0; i<key.length; i++) 
-			keyHash = 31 * keyHash + key[i];
-		
+//		int keyHash=0;
+//		for (int i=0; i<key.length; i++)
+//		while (keyStart <= keyEnd) {
+////System.out.print((char)key[keyStart]);
+//			keyHash = 31 * keyHash + key[keyStart++];
+//		}
+		int keyHash = key.hashCode();
+//System.out.print("-" + keyHash +"\n");		
 		int keyCmp;
 		byte type;
 		int result;
@@ -989,7 +997,7 @@ public class Common {
 			}
 		}
 
-		return 0;
+		return -1;
 	}
 	
 	
