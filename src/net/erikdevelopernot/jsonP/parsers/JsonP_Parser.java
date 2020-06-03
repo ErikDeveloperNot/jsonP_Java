@@ -50,9 +50,13 @@ private int hashKey;
 public int resizes;
 public int keyCount;
 byte[] path;
+//TEST
+int[] pathHashes = new int[1024];
+
 int pathIndex;
 byte[] currentKey;
 int currentKeyLength;
+
 	/*
 	 * Constructors
 	 */
@@ -108,7 +112,7 @@ if (json.length < 100000) {
 	testMap_i = new int[2048];
 	testMapLength = 2048;
 } else {
-	testMap = new int[100_000][200];
+	testMap = new int[100_000][400];
 //			testMapMeta = new byte[8096][10];
 	testMap_i = new int[100_000];
 	testMapLength = 100_000;
@@ -776,6 +780,8 @@ for (int i=0; i<currentKeyLength; i++) {
 END WORKING BEFORE */
 //TEST
 pathIndex -= 1;
+
+if (numKeys > 0) {
 hash=0;
 //System.out.print("Adding path: ");
 for (int i=0; i<pathIndex; i++) {
@@ -791,6 +797,7 @@ testMap[hashKey][testMap_i[hashKey]++] = dataIdx; // + Common.member_keyvalue_of
 //					
 if (testMap_i[hashKey] == testMap[hashKey].length) {
 	increaseMapBucket(hashKey);
+}
 }
 
 currentKeyLength = localCurrentKeyLength;
@@ -1285,14 +1292,22 @@ stackBufIdx = locStackIndx - parentElementSize;
 		public int metaIndex;
 		public int dataLength;
 		public int dataIndex;
+		public int largestBucket;
 		
 		public String getStats() {
+			for (int j=0; j<testMap_i.length; j++) {
+				if (testMap_i[j] > largestBucket) {
+					largestBucket = testMap_i[j];
+				}
+		}
+			
 			return new StringBuilder("Parse Stats:\n  Stack Increases: ").append(stackIncreases).
 				append("\n  Data Increases: ").append(dataIncreases).
 				append("\n  Meta Length: ").append(metaLength).
 				append("\n  Meta Index: ").append(metaIndex).
 				append("\n  Data Length: ").append(dataLength).
-				append("\n  Data Index: ").append(dataIndex).toString();
+				append("\n  Data Index: ").append(dataIndex).
+				append("\n  Largest bucket: ").append(largestBucket).toString();
 				
 		}
 	}

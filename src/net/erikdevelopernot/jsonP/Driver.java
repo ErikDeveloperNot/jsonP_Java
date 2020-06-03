@@ -682,7 +682,7 @@ int index =0;
 		
 //System.gc();
 //System.console().readLine();
-String sPath = "/web-81app9/arr79/0/servlet174/0/init-param/init-param/init-param/init-param/init-param/init-param/array1/2";
+String sPath = "/web-81app9/arr79/0/servlet174/0/init-param/init-param/init-param/init-param/init-param/init-param/maxUrlLength";
 //String sPath = "web-81app9arr790servlet1740init-paraminit-paraminit-paraminit-paraminit-paraminit-parammaxUrlLength";
 //String sPath = "/obj_ptr_will_break/key__2/bb/rr/0";
 String sValue = null;
@@ -691,11 +691,11 @@ long iValue = 0;
 int id=-1;
 
 long s = System.currentTimeMillis();
-for (int i=0; i<10000; i++) {
-	id = jsonPJson.getObjectId(sPath, '/');
-//	sValue = jsonPJson.getStringValue(sPath, '/');
+//for (int i=0; i<10000; i++) {
+////	id = jsonPJson.getObjectId(sPath, '/');
+////	sValue = jsonPJson.getStringValue(sPath, '/');
 //	iValue = jsonPJson.getLongValue(sPath, '/');
-}
+//}
 long f = System.currentTimeMillis();
 
 //KeyEntrySet es = (KeyEntrySet)jsonPJson.getContainerElements(id);
@@ -704,8 +704,8 @@ long f = System.currentTimeMillis();
 //			", id: " + es.getAsArray(i));
 //}
 //sValue = jsonPJson.getStringValue(Common.object, id);
-System.out.println("id: " + id + ", element type: " + jsonPJson.getElementType(id) + ", time: " + (f-s) + "m/s");
-System.out.println("Value: " + iValue + ", time: " + (f-s) + "m/s");
+//System.out.println("id: " + id + ", element type: " + jsonPJson.getElementType(id) + ", time: " + (f-s) + "m/s");
+//System.out.println("Value: " + iValue + ", time: " + (f-s) + "m/s");
 
 //id = jsonPJson.getObjectId("/web-81app9/arr79", '/');
 //System.out.println("id: " + id);
