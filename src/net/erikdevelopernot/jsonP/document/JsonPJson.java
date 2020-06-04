@@ -19,16 +19,17 @@ public class JsonPJson {
 	private boolean metaEqData;
 	private int docRoot;
 	
-//testing - object map structures
-public int[][] testMap;
-public int testMap_i[];
-private int testMapLength;
+	// object index hash structures
+	public int[][] objectIndexHashes;
+	public int objectIndexHashes_i[];
+	private int objectIndexHashesLen;
 
 	
 	//options
-	private boolean dontSortKeys;
+	private boolean sortKeys;
 	private boolean weakRef;
 	private boolean convertNumberics;
+	private boolean indexObjects;
 	
 	//used when getting a meta-slot
 	private boolean isExt;
@@ -65,9 +66,10 @@ private int testMapLength;
 //	public JsonPJson(byte[] data, byte[] metaData, int dataLength, int metaLength, int docRoot, int options) {
 	public JsonPJson(byte[] data, byte[] metaData, int dataLength, int metaLength, int[][] testMap, int[] testMap_i, 
 			int testMapLength, int docRoot, int options) {
-this.testMap = testMap;
-this.testMap_i = testMap_i;
-this.testMapLength = testMapLength;
+
+		this.objectIndexHashes = testMap;
+		this.objectIndexHashes_i = testMap_i;
+		this.objectIndexHashesLen = testMapLength;
 
 		this.data = data;
 		this.metaData = metaData;
@@ -76,7 +78,8 @@ this.testMapLength = testMapLength;
 		this.docRoot = docRoot;
 		useJson = true;
 		
-		dontSortKeys = ((options & Common.DONT_SORT_KEYS) > 0) ? true : false;
+		sortKeys = ((options & Common.DONT_SORT_KEYS) > 0) ? false : true;
+		indexObjects = ((options & Common.DONT_INDEX_OBJECTS) > 0) ? false : true;
 		weakRef = ((options & Common.WEAK_REF) > 0) ? true : false;
 		convertNumberics = ((options & Common.CONVERT_NUMERICS) > 0) ? true : false;
 		
@@ -126,7 +129,7 @@ this.testMapLength = testMapLength;
 		metaLength = dataLength;
 		metaIndx = dataIndx;
 		metaEqData = true;
-byte elementSize;
+		byte elementSize;
 		
 		if (type == Common.object) {
 			metaData[metaIndx] = Common.object;
@@ -165,7 +168,8 @@ byte elementSize;
 		metaIndx += elementSize;
 		
 //		getNextArrayBuf = new byte[8 * 2];
-		dontSortKeys = ((options & Common.DONT_SORT_KEYS) > 0) ? true : false;
+		sortKeys = ((options & Common.DONT_SORT_KEYS) > 0) ? false : true;
+		indexObjects = ((options & Common.DONT_INDEX_OBJECTS) > 0) ? false : true;
 		weakRef = ((options & Common.WEAK_REF) > 0) ? true : false;
 		convertNumberics = ((options & Common.CONVERT_NUMERICS) > 0) ? true : false;
 		
@@ -262,11 +266,11 @@ byte elementSize;
 			metaData[metaIndx++] = (byte)((keyLoc >>> 8) & 0xFF);
 			metaData[metaIndx++] = (byte)(keyLoc & 0xFF);
 
-//metaIndx += 4;	//move past hash field
-metaData[metaIndx++] = (byte)((hash >>> 24) & 0xFF);
-metaData[metaIndx++] = (byte)((hash >>> 16) & 0xFF);
-metaData[metaIndx++] = (byte)((hash >>> 8) & 0xFF);
-metaData[metaIndx++] = (byte)(hash & 0xFF);
+			//metaIndx += 4;	//move past hash field
+			metaData[metaIndx++] = (byte)((hash >>> 24) & 0xFF);
+			metaData[metaIndx++] = (byte)((hash >>> 16) & 0xFF);
+			metaData[metaIndx++] = (byte)((hash >>> 8) & 0xFF);
+			metaData[metaIndx++] = (byte)(hash & 0xFF);
 		} else {
 			metaData[metaIndx++] = 0;
 			metaData[metaIndx++] = 0;
@@ -302,7 +306,7 @@ metaData[metaIndx++] = (byte)(hash & 0xFF);
 		metaData[metaIndx++] = 0;
 		metaData[metaIndx++] = 0;
 
-		if (!isExt && parentType == Common.object && !dontSortKeys) {
+		if (!isExt && parentType == Common.object && sortKeys) {
 			int numKeys = ((metaData[parentId + Common.object_member_sz] << 24) & 0xFF000000) |
 						  ((metaData[parentId + Common.object_member_sz + 1] << 16) & 0x00FF0000) |
 						  ((metaData[parentId + Common.object_member_sz + 2] << 8) & 0x0000FF00) |
@@ -410,10 +414,10 @@ metaData[metaIndx++] = (byte)(hash & 0xFF);
 			
 			data[dataIndx++] = '\0';
 			
-metaData[metaSlot + Common.object_member_hash_offx] = (byte)((hash >> 24) & 0xFF);
-metaData[metaSlot + Common.object_member_hash_offx + 1] = (byte)((hash >> 16) & 0xFF);
-metaData[metaSlot + Common.object_member_hash_offx + 2] = (byte)((hash >> 8) & 0xFF);
-metaData[metaSlot + Common.object_member_hash_offx + 3] = (byte)(hash & 0xFF);
+			metaData[metaSlot + Common.object_member_hash_offx] = (byte)((hash >> 24) & 0xFF);
+			metaData[metaSlot + Common.object_member_hash_offx + 1] = (byte)((hash >> 16) & 0xFF);
+			metaData[metaSlot + Common.object_member_hash_offx + 2] = (byte)((hash >> 8) & 0xFF);
+			metaData[metaSlot + Common.object_member_hash_offx + 3] = (byte)(hash & 0xFF);
 		} else {
 			increaseData(valLen + 4);
 			
@@ -452,7 +456,7 @@ metaData[metaSlot + Common.object_member_hash_offx + 3] = (byte)(hash & 0xFF);
 			data[dataIndx++] = '\0';
 		} 
 // !!!!!!!!!!!! TODO
-		if (!isExt && containerType == Common.object && !dontSortKeys) {
+		if (!isExt && containerType == Common.object && sortKeys) {
 
 			int numKeys = ((metaData[parentId + elementSize] << 24) & 0xFF000000) |
 						  ((metaData[parentId + elementSize + 1] << 16) & 0x00FF0000) |
@@ -698,71 +702,74 @@ metaData[metaSlot + Common.object_member_hash_offx + 3] = (byte)(hash & 0xFF);
 	 */
 	private int getObjectId(String path, char delim, boolean retPtr, boolean setParentId, boolean setExtInfo)
 	{
-		//dont check for trailing delim for now - CHECK for HASH Col
-		int pathHash = path.hashCode();
-		int bucket = (pathHash >= 0) ? (pathHash % testMapLength) : ((pathHash * -1) % testMapLength); 
-		
-//System.out.println("Checking: " + pathHash + ", in bucket: " + bucket);
-		
-		for (int i=0; i<testMap[bucket].length; i+=2) {
-//System.out.println("  " + testMap[bucket][i]);
-			if (testMap[bucket][i] == pathHash) {
-				return testMap[bucket][i+1];
-			}
-		}
-
-		
-///////START WORKING		
-		int result = -1;
-//System.out.println("Second: " + path.substring(0, path.lastIndexOf(delim)));	
-		pathHash = path.substring(0, path.lastIndexOf(delim)).hashCode();
-		bucket = (pathHash >= 0) ? (pathHash % testMapLength) : ((pathHash * -1) % testMapLength); 
-
-//System.out.println("Checking: " + pathHash + ", in bucket: " + bucket);
-		for (int i=0; i<testMap[bucket].length; i+=2) {
-//System.out.println("  " + testMap[bucket][i]);
-			if (testMap[bucket][i] == pathHash) {
-				result = testMap[bucket][i+1];
-				break;
-			}
-		}
-		
-		if (result > -1) {
-			int numKeys;
-			int end;
-			boolean keysSorted;
-		
-			if (setParentId)
-				parentContainerID = result;
+		// if objects are indexed - default
+		if (indexObjects) {
+			//dont check for trailing delim for now - CHECK for HASH Col
+			int pathHash = path.hashCode();
+			int bucket = (pathHash >= 0) ? (pathHash % objectIndexHashesLen) : ((pathHash * -1) % objectIndexHashesLen); 
 			
-			result += Common.object_member_sz;
-			numKeys = ((metaData[result] << 24) & 0xFF000000) |
-				      	  ((metaData[result + 1] << 16) & 0x00FF0000) |
-				      	  ((metaData[result + 2] << 8) & 0x0000FF00) |
-				      	  (metaData[result + 3] & 0x000000FF);
-			result += Common.root_sz;
-			end = result + (numKeys * Common.object_member_sz) - Common.object_member_sz;
-			String key = path.substring(path.lastIndexOf(delim)+1);
+	//System.out.println("Checking: " + pathHash + ", in bucket: " + bucket);
+			
+			for (int i=0; i<objectIndexHashes[bucket].length; i+=2) {
+	//System.out.println("  " + testMap[bucket][i]);
+				if (objectIndexHashes[bucket][i] == pathHash) {
+					return objectIndexHashes[bucket][i+1];
+				}
+			}
 	
-			//backwards, searchKeysByHash -sorted true means it is true keys are NOT sorted
-			keysSorted = (!dontSortKeys && (numKeys > Common.SORT_THRESH_HOLD)) ? false : true;
+			
+	///////START WORKING		
+			int result = -1;
+	//System.out.println("Second: " + path.substring(0, path.lastIndexOf(delim)));	
+			pathHash = path.substring(0, path.lastIndexOf(delim)).hashCode();
+			bucket = (pathHash >= 0) ? (pathHash % objectIndexHashesLen) : ((pathHash * -1) % objectIndexHashesLen); 
 	
-			if (retPtr) {
-				if (setExtInfo) {
-					extDetail.isExt = false;
-					result = Common.searchKeysByHash(key, result, 
-							end, metaData, data, true, keysSorted, extDetail);
+	//System.out.println("Checking: " + pathHash + ", in bucket: " + bucket);
+			for (int i=0; i<objectIndexHashes[bucket].length; i+=2) {
+	//System.out.println("  " + testMap[bucket][i]);
+				if (objectIndexHashes[bucket][i] == pathHash) {
+					result = objectIndexHashes[bucket][i+1];
+					break;
+				}
+			}
+			
+			if (result > -1) {
+				int numKeys;
+				int end;
+				boolean keysSorted;
+			
+				if (setParentId)
+					parentContainerID = result;
+				
+				result += Common.object_member_sz;
+				numKeys = ((metaData[result] << 24) & 0xFF000000) |
+					      	  ((metaData[result + 1] << 16) & 0x00FF0000) |
+					      	  ((metaData[result + 2] << 8) & 0x0000FF00) |
+					      	  (metaData[result + 3] & 0x000000FF);
+				result += Common.root_sz;
+				end = result + (numKeys * Common.object_member_sz) - Common.object_member_sz;
+				String key = path.substring(path.lastIndexOf(delim)+1);
+		
+				//backwards, searchKeysByHash -sorted true means it is true keys are NOT sorted
+				keysSorted = (sortKeys && (numKeys > Common.SORT_THRESH_HOLD)) ? false : true;
+		
+				if (retPtr) {
+					if (setExtInfo) {
+						extDetail.isExt = false;
+						result = Common.searchKeysByHash(key, result, 
+								end, metaData, data, true, keysSorted, extDetail);
+					} else {
+						result = Common.searchKeysByHash(key, result, 
+								end, metaData, data, true, keysSorted, null);
+					}
 				} else {
 					result = Common.searchKeysByHash(key, result, 
-							end, metaData, data, true, keysSorted, null);
+							end, metaData, data, false, keysSorted, null);
 				}
-			} else {
-				result = Common.searchKeysByHash(key, result, 
-						end, metaData, data, false, keysSorted, null);
+	
+				return result;
 			}
-
-			return result;
-///////END WORKING
+		}	// end if objects indexed
 		
 		
 //		int result = -1;
@@ -846,7 +853,6 @@ metaData[metaSlot + Common.object_member_hash_offx + 3] = (byte)(hash & 0xFF);
 //		
 //			return result;
 //		
-		} 
 		
 //		System.out.println("No Parent appears to be indexed, fail to old search");
 		
@@ -869,7 +875,7 @@ metaData[metaSlot + Common.object_member_hash_offx + 3] = (byte)(hash & 0xFF);
 //		int elementSize = (parent == Common.object) ? Common.object_member_sz : Common.array_member_sz;
 //		int extNextOffx = (parent == Common.object) ? Common.object_member_key_ext_next_offx : Common.array_member_value_ext_next_offx;
 	
-		result = docRoot;
+		int result = docRoot;
 		int start = docRoot + ((parent == Common.object) ? Common.object_member_sz : Common.array_member_sz);
 
 		int numKeys = ((metaData[start] << 24) & 0xFF000000) |
@@ -933,7 +939,7 @@ metaData[metaSlot + Common.object_member_hash_offx + 3] = (byte)(hash & 0xFF);
 			} else {
 //				byte[] tokBytes = tok.getBytes();
 				//backwards, searchKeysByHash -sorted true means it is true keys are NOT sorted
-				boolean keysSorted = (!dontSortKeys && (numKeys > Common.SORT_THRESH_HOLD)) ? false : true;
+				boolean keysSorted = (sortKeys && (numKeys > Common.SORT_THRESH_HOLD)) ? false : true;
 				
 				if (nextTok == null) {
 					if (retPtr) {
@@ -1137,7 +1143,7 @@ metaData[metaSlot + Common.object_member_hash_offx + 3] = (byte)(hash & 0xFF);
 			 * the only way to get an accurate number is to verify all keys are not empty values
 			 * design issue, should add another field in each object/array for current count 
 			 */
-			if (dontSortKeys) {
+			if (!sortKeys) {
 				//unsorted, need to check each slot since there can be holes if deletes were done
 				id = elementID + elementSize + Common.root_sz;
 				
@@ -1651,7 +1657,7 @@ metaData[metaSlot + Common.object_member_hash_offx + 3] = (byte)(hash & 0xFF);
 			elementExtSize = Common.object_member_ext_sz;
 			//if there is an empty spot return it
 			if (metaData[start + ((numKeys-1) * elementSize)] == Common.empty) {
-				if (!dontSortKeys) {
+				if (sortKeys) {
 					//keys sorted so return and the caller will call sort 
 					return (start + ((numKeys-1) * elementSize));
 				} else {

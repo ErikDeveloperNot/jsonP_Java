@@ -9,6 +9,7 @@ public class Common {
 	public static final int DONT_SORT_KEYS = PRESERVE_JSON << 2;
 	public static final int WEAK_REF = PRESERVE_JSON << 3;
 	public static final int CONVERT_NUMERICS = PRESERVE_JSON << 4;
+	public static final int DONT_INDEX_OBJECTS = PRESERVE_JSON << 5;
 		
 	
 	//Heap indexes - max size for each segment is 2GB, max allowed size of json =~ 20GB

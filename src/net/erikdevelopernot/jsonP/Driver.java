@@ -60,7 +60,7 @@ public class Driver {
 //		testManual();
 //		testJsonPElementAccess("/Users/user1/eclipse-workspace/jsonP_java/examples/simple5.json");
 //		testJsonPElementAccess("/Users/user1/Downloads/large.json");
-		testJsonPElementAccess(largeJson, 1);
+		testJsonPElementAccess(webappJson, 1);
 		
 		//uncomment to test Fangiong
 //		testFangiongParser("/Users/user1/Downloads/large.json");
@@ -585,7 +585,7 @@ System.out.println("Time: " + (f-s) + "m/s");
 				long s = System.currentTimeMillis();
 	
 				byte[] jsonData = getBytes(json);
-				parser = new JsonP_Parser(jsonData, Common.CONVERT_NUMERICS);// | Common.DONT_SORT_KEYS);
+				parser = new JsonP_Parser(jsonData, Common.CONVERT_NUMERICS); // | Common.DONT_SORT_KEYS | Common.DONT_INDEX_OBJECTS);
 				jsonPJson = parser.parse();
 				
 				long f = System.currentTimeMillis();
@@ -691,11 +691,11 @@ long iValue = 0;
 int id=-1;
 
 long s = System.currentTimeMillis();
-//for (int i=0; i<10000; i++) {
-////	id = jsonPJson.getObjectId(sPath, '/');
-////	sValue = jsonPJson.getStringValue(sPath, '/');
-//	iValue = jsonPJson.getLongValue(sPath, '/');
-//}
+for (int i=0; i<10000; i++) {
+//	id = jsonPJson.getObjectId(sPath, '/');
+//	sValue = jsonPJson.getStringValue(sPath, '/');
+	iValue = jsonPJson.getLongValue(sPath, '/');
+}
 long f = System.currentTimeMillis();
 
 //KeyEntrySet es = (KeyEntrySet)jsonPJson.getContainerElements(id);
@@ -705,7 +705,7 @@ long f = System.currentTimeMillis();
 //}
 //sValue = jsonPJson.getStringValue(Common.object, id);
 //System.out.println("id: " + id + ", element type: " + jsonPJson.getElementType(id) + ", time: " + (f-s) + "m/s");
-//System.out.println("Value: " + iValue + ", time: " + (f-s) + "m/s");
+System.out.println("Value: " + iValue + ", time: " + (f-s) + "m/s");
 
 //id = jsonPJson.getObjectId("/web-81app9/arr79", '/');
 //System.out.println("id: " + id);
