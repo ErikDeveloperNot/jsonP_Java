@@ -1,4 +1,38 @@
 {
+	"web-81app9" : {
+	    "nnkey" : "nnvale",
+		"arr79" : [ 
+		  { 
+		    "servlet174" : [ 
+		      {
+		        "nnkey" : "nnvale",
+		        "nnkey2" : "nnvale",
+		        "nnkey3" : "nnvale",
+		        "init-param" : { 
+		          "redirectionClass" : "Redirect one",
+		          "init-param" : { 
+		            "redirectionClass" : "Redirect 2",
+		            "init-param" : { 
+			          "redirectionClass" : "Redirect 3",
+			          "init-param" : { 
+			            "init-param" : { 
+				          "redirectionClass" : "Redirect 5",
+				          "init-param" : { 
+				            "redirectionClass" : "Redirect 6" 
+				          } 
+				        },
+			            "redirectionClass" : "Redirect 4" 
+			          } 
+			        } 
+		          } 
+		        },
+		        "Znnkey" : "nnvale"
+		      } 
+		    ] 
+		  } 
+		],
+		"somekey" : false
+	},
 	"nk3" : [ "seems to break with array at end", "two" ],
 	"key1" : "value1",
 	"obj1" : {
@@ -7,7 +41,8 @@
 		"obj_k3": {
 			"obj_inner_k1": "obj_inner_v1",
 			"null_k1" : null,
-			"obj_inner_k2": "obj_inner_v2"
+			"obj_inner_k2": "obj_inner_v2",
+			"obj_inner_k3": [ "value1", "value2 "]
 		} 
 	},
 	"key2" : "value2",
@@ -15,6 +50,6 @@
 	"num_neg_dec": -7372244,
 	"num_flt": 12345.6789,
 	"num_flt_sci": 1234.567E+3,
-	"key3" : [ "arry_v1", "arry_v2", "arry_v3", ["abc", "def", "ghi"], { "k1" : "v1", "k2" : "v2" } ]
+	"key3" : [ "arry_v1", "arry_v2", "arry_v3", ["abc", "def", "ghi", [true]], { "k1" : "v1", "k2" : "v2" } ]
 	
 }

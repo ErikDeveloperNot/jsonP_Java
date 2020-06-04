@@ -1,16 +1,11 @@
 {
-	"key1" : "value1",
 	"key2" : "value2",
 	"key3" : {
-		"i1" : "v1",
 		"i2" : 123456,
 		"i3" : {
 			"zz" : "ZZ",
 			"aa" : "aa",
 			"JJ" : {}
 		}
-	},
-	"key4" : false,
-	"key5" : [ true, false, [123, 456, 789], [ true, false, [null, "not null", {"tt" : "TT", "arry" : [-9923, 999.111]}]]],
-	"key6" : "Value6"
+	}
 }
